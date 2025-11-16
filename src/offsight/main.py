@@ -1,0 +1,26 @@
+"""
+OffSight™ - AI-Powered Regulatory Intelligence for Offshore Wind
+
+FastAPI entrypoint.
+
+To run this application:
+    uvicorn offsight.main:app --reload
+
+Or from the project root:
+    uvicorn src.offsight.main:app --reload
+"""
+
+from fastapi import FastAPI
+
+app = FastAPI(
+    title="OffSight™ - Regulatory Intelligence",
+    description="AI-Powered Regulatory Intelligence for Offshore Wind",
+    version="0.1.0",
+)
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok"}
+
