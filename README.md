@@ -19,3 +19,10 @@ This project is developed as part of a bachelor thesis at VIA University College
 - **AI**: Local LLM via Ollama
 - **Frontend/UI**: Simple web UI (FastAPI templates or minimal React)
 - **Version Control**: Git + GitHub
+
+## Getting Started
+
+1. Install dependencies: `pip install -r requirements.txt`
+2. Copy `.env.example` to `.env` and configure your database and Ollama URLs
+3. Run the application: `uvicorn src.offsight.main:app --reload`
+4. Run tests: `pytest`
