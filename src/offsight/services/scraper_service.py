@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 
 from bs4 import BeautifulSoup
 import httpx
+from httpx import HTTPStatusError, RequestError
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
@@ -29,7 +30,7 @@ class ScraperService:
         """
         self.timeout = timeout
 
-    def fetch_raw_content(self, source: Source) -> str:
+    def fetch_raw_content(self, source: Source) -> str | None:
         """
         Fetch and extract text content from a source URL.
 
@@ -37,16 +38,26 @@ class ScraperService:
             source: The Source entity to fetch content from
 
         Returns:
-            Extracted text content as a string
+            Extracted text content as a string, or None if the fetch failed.
 
-        Raises:
-            httpx.HTTPError: If the HTTP request fails
+        Notes:
+            HTTP/network errors are caught and logged; returns None on failure.
         """
         # Fetch the HTML content
-        with httpx.Client(timeout=self.timeout) as client:
-            response = client.get(source.url)
-            response.raise_for_status()
-            html_content = response.text
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(source.url)
+                response.raise_for_status()
+                html_content = response.text
+        except HTTPStatusError as exc:
+            status = exc.response.status_code if exc.response else "unknown"
+            print(
+                f"[ERROR] HTTP status error while fetching {source.url}: {status} ({exc})"
+            )
+            return None
+        except RequestError as exc:
+            print(f"[ERROR] Network error while fetching {source.url}: {exc}")
+            return None
 
         # Parse HTML with BeautifulSoup
         soup = BeautifulSoup(html_content, "html.parser")
@@ -77,11 +88,13 @@ class ScraperService:
             db: SQLAlchemy database session
 
         Returns:
-            New RegulationDocument if content changed, None otherwise
+            New RegulationDocument if content changed, None if unchanged or fetch failed.
 
         Raises:
             ValueError: If source not found
-            httpx.HTTPError: If the HTTP request fails
+
+        Notes:
+            HTTP/network errors are handled and logged; returns None on failure.
         """
         # Load the source
         source = db.query(Source).filter(Source.id == source_id).first()
@@ -93,6 +106,8 @@ class ScraperService:
 
         # Fetch raw content
         content = self.fetch_raw_content(source)
+        if content is None:
+            return None
 
         # Compute content hash (SHA256)
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
