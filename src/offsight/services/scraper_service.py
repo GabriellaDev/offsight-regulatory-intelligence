@@ -6,7 +6,7 @@ new document versions when content changes.
 """
 
 import hashlib
-from datetime import datetime
+from datetime import UTC, datetime
 
 from bs4 import BeautifulSoup
 import httpx
@@ -98,6 +98,8 @@ class ScraperService:
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
 
         # Get the latest document for this source
+        # Order by retrieved_at DESC to get the most recently retrieved document
+        # This ensures we compare against the most recent version
         latest_doc = (
             db.query(RegulationDocument)
             .filter(RegulationDocument.source_id == source_id)
@@ -106,21 +108,35 @@ class ScraperService:
         )
 
         # Check if content has changed
-        if latest_doc and latest_doc.content_hash == content_hash:
-            # Content unchanged, return None
-            return None
+        if latest_doc:
+            print(f"  Comparing with latest document: ID {latest_doc.id}, version {latest_doc.version}")
+            print(f"  Latest hash: {latest_doc.content_hash[:16]}...")
+            print(f"  New hash:    {content_hash[:16]}...")
+            
+            if latest_doc.content_hash == content_hash:
+                # Content unchanged, return None
+                print(f"  ✓ No changes detected. Content is identical to version {latest_doc.version}.")
+                return None
+            else:
+                print(f"  Content hash differs - new version will be created.")
+        else:
+            print(f"  No previous documents found for this source - creating first version.")
 
         # Determine next version number
         if latest_doc:
             # Try to parse version as integer and increment
             try:
-                next_version = str(int(latest_doc.version) + 1)
+                version_num = int(latest_doc.version)
+                next_version = str(version_num + 1)
+                print(f"  Incrementing version: {latest_doc.version} → {next_version}")
             except ValueError:
                 # If version is not numeric, append a suffix
                 next_version = f"{latest_doc.version}.1"
+                print(f"  Non-numeric version detected, appending suffix: {latest_doc.version} → {next_version}")
         else:
             # First document for this source
             next_version = "1"
+            print(f"  Creating first document version: {next_version}")
 
         # Create new document
         new_doc = RegulationDocument(
@@ -128,7 +144,7 @@ class ScraperService:
             version=next_version,
             content=content,
             content_hash=content_hash,
-            retrieved_at=datetime.utcnow(),
+            retrieved_at=datetime.now(UTC),
             url=source.url,
             document_metadata=None,
         )
