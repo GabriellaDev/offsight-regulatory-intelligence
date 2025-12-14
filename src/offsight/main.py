@@ -12,11 +12,17 @@ Or from the project root:
 
 from fastapi import FastAPI
 
+from offsight.api import changes, sources
+
 app = FastAPI(
     title="OffSight™ - Regulatory Intelligence",
     description="AI-Powered Regulatory Intelligence for Offshore Wind",
     version="0.1.0",
 )
+
+# Include API routers
+app.include_router(sources.router, prefix="/sources", tags=["sources"])
+app.include_router(changes.router, prefix="/changes", tags=["changes"])
 
 
 @app.get("/health")
