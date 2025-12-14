@@ -4,6 +4,7 @@
 
 {% block content %}
 <h1>Detected Regulatory Changes</h1>
+<p><small>Shows changes detected between stored versions of monitored sources.</small></p>
 
 <!-- Filter Form -->
 <form method="get" action="/ui/changes">
@@ -55,7 +56,18 @@
                 </span>
             </td>
             <td>{{ change.category_name or '-' }}</td>
-            <td class="summary-preview">{{ change.ai_summary[:120] if change.ai_summary else '-' }}{% if change.ai_summary and change.ai_summary|length > 120 %}...{% endif %}</td>
+            <td class="summary-preview">
+                {% if change.ai_summary %}
+                    {% set max_length = 100 %}
+                    {% if change.ai_summary|length > max_length %}
+                        {{ change.ai_summary[:max_length] }}...
+                    {% else %}
+                        {{ change.ai_summary }}
+                    {% endif %}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
             <td><a href="/ui/changes/{{ change.id }}" role="button" class="secondary">View</a></td>
         </tr>
         {% endfor %}

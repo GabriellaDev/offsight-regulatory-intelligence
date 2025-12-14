@@ -5,6 +5,13 @@
 {% block content %}
 <h1>Change #{{ change.id }}</h1>
 
+<!-- Info Box -->
+<div class="info-box">
+    <strong>What you are seeing:</strong> This page compares two stored versions of a monitored source. 
+    The AI suggestion is generated from the diff (not the full page). 
+    Human validation creates an audit record and updates status.
+</div>
+
 {% if error_message %}
 <div class="message-error">{{ error_message }}</div>
 {% endif %}
@@ -45,7 +52,10 @@
 <!-- Diff Content Section -->
 <article>
     <h2>Change Diff</h2>
-    <pre>{{ change.diff_content }}</pre>
+    <p><small>Diff format: unified diff (--- previous, +++ new)</small></p>
+    <div class="diff-box">
+        <pre>{{ change.diff_content }}</pre>
+    </div>
 </article>
 
 <!-- Validation Form -->
