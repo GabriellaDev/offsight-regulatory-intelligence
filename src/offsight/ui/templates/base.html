@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}OffSight™ - Regulatory Intelligence{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-ai_suggested { background-color: #dbeafe; color: #1e40af; }
+        .status-validated { background-color: #d1fae5; color: #065f46; }
+        .status-corrected { background-color: #e0e7ff; color: #3730a3; }
+        .status-rejected { background-color: #fee2e2; color: #991b1b; }
+        .message-success { background-color: #d1fae5; color: #065f46; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; }
+        .message-error { background-color: #fee2e2; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; }
+        pre { overflow-x: auto; background-color: #f3f4f6; padding: 1rem; border-radius: 0.5rem; }
+        .summary-preview { max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul>
+            <li><strong>OffSight™</strong></li>
+        </ul>
+        <ul>
+            <li><a href="/ui/changes">Changes</a></li>
+            <li><a href="/health">Health</a></li>
+            <li><a href="/docs">Docs</a></li>
+        </ul>
+    </nav>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
+

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Detected Regulatory Changes - OffSight™{% endblock %}
+
+{% block content %}
+<h1>Detected Regulatory Changes</h1>
+
+<!-- Filter Form -->
+<form method="get" action="/ui/changes">
+    <div class="grid">
+        <div>
+            <label for="status">Status</label>
+            <select name="status" id="status">
+                <option value="">All</option>
+                <option value="pending" {% if status == "pending" %}selected{% endif %}>Pending</option>
+                <option value="ai_suggested" {% if status == "ai_suggested" %}selected{% endif %}>AI Suggested</option>
+                <option value="validated" {% if status == "validated" %}selected{% endif %}>Validated</option>
+                <option value="corrected" {% if status == "corrected" %}selected{% endif %}>Corrected</option>
+                <option value="rejected" {% if status == "rejected" %}selected{% endif %}>Rejected</option>
+            </select>
+        </div>
+        <div>
+            <label for="source_id">Source ID</label>
+            <input type="number" name="source_id" id="source_id" value="{{ source_id or '' }}" placeholder="Filter by source">
+        </div>
+        <div>
+            <label>&nbsp;</label>
+            <button type="submit">Filter</button>
+        </div>
+    </div>
+</form>
+
+{% if changes %}
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Detected At</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Category</th>
+            <th>Summary</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for change in changes %}
+        <tr>
+            <td>{{ change.id }}</td>
+            <td>{{ change.detected_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ change.source_name }}</td>
+            <td>
+                <span class="status-badge status-{{ change.status }}">
+                    {{ change.status.replace('_', ' ').title() }}
+                </span>
+            </td>
+            <td>{{ change.category_name or '-' }}</td>
+            <td class="summary-preview">{{ change.ai_summary[:120] if change.ai_summary else '-' }}{% if change.ai_summary and change.ai_summary|length > 120 %}...{% endif %}</td>
+            <td><a href="/ui/changes/{{ change.id }}" role="button" class="secondary">View</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<article>
+    <p>No changes found. {% if status or source_id %}Try adjusting your filters.{% else %}Run the scraper and change detection to see changes here.{% endif %}</p>
+</article>
+{% endif %}
+{% endblock %}
+

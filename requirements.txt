@@ -7,5 +7,7 @@ sqlalchemy
 psycopg2-binary
 httpx
 beautifulsoup4
+jinja2
+python-multipart
 pytest
 
