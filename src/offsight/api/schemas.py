@@ -5,6 +5,7 @@ Defines the data structures used for API input validation and output serializati
 """
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 from pydantic import HttpUrl as AnyHttpUrl
@@ -78,6 +79,42 @@ class ChangeAiResult(BaseModel):
     status: str
     ai_summary: str | None
     category_name: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Validation schemas
+class ChangeValidationRequest(BaseModel):
+    """Schema for validating a RegulationChange (accepting, correcting, or rejecting AI suggestions)."""
+
+    decision: Literal["approved", "corrected", "rejected"]
+    final_summary: str | None = None
+    final_category: str | None = None
+    notes: str | None = None
+    user_id: int | None = None  # Optional, will default to demo user if missing
+
+
+class ChangeValidationResult(BaseModel):
+    """Schema for validation result after processing a validation request."""
+
+    change_id: int
+    status: str
+    final_summary: str | None
+    final_category_name: str | None
+    validation_decision: str
+    validation_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ValidationRecordSummary(BaseModel):
+    """Schema for a summary of a ValidationRecord (used in list views)."""
+
+    id: int
+    user_id: int
+    decision: str
+    validated_at: datetime
+    notes: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
