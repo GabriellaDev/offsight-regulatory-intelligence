@@ -26,6 +26,11 @@ class Settings(BaseSettings):
         alias="OLLAMA_BASE_URL",
         description="Base URL for Ollama API",
     )
+    ollama_model: str = Field(
+        default="llama3.1",
+        alias="OLLAMA_MODEL",
+        description="Ollama model name to use for AI analysis",
+    )
 
     class Config:
         """Pydantic config."""
