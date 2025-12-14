@@ -6,76 +6,87 @@
 <h1>Detected Regulatory Changes</h1>
 <p><small>Shows changes detected between stored versions of monitored sources.</small></p>
 
+<!-- Explanation Box -->
+<div class="explanation-box">
+    <strong>What this page shows:</strong>
+    This page displays regulatory changes detected by comparing stored versions of monitored sources. 
+    Each change represents a difference between two document versions, with AI-generated summaries and impact categories.
+</div>
+
 <!-- Filter Form -->
-<form method="get" action="/ui/changes">
-    <div class="grid">
-        <div>
-            <label for="status">Status</label>
-            <select name="status" id="status">
-                <option value="">All</option>
-                <option value="pending" {% if status == "pending" %}selected{% endif %}>Pending</option>
-                <option value="ai_suggested" {% if status == "ai_suggested" %}selected{% endif %}>AI Suggested</option>
-                <option value="validated" {% if status == "validated" %}selected{% endif %}>Validated</option>
-                <option value="corrected" {% if status == "corrected" %}selected{% endif %}>Corrected</option>
-                <option value="rejected" {% if status == "rejected" %}selected{% endif %}>Rejected</option>
-            </select>
+<article>
+    <h2 style="margin-top: 0; margin-bottom: 1.5rem;">Filters</h2>
+    <form method="get" action="/ui/changes">
+        <div class="grid" style="grid-template-columns: 1fr 1fr auto; align-items: end; gap: 1.5rem;">
+            <div>
+                <label for="status_filter">Status</label>
+                <select name="status_filter" id="status_filter">
+                    <option value="">All Statuses</option>
+                    <option value="pending" {% if status == "pending" %}selected{% endif %}>Pending</option>
+                    <option value="ai_suggested" {% if status == "ai_suggested" %}selected{% endif %}>AI Suggested</option>
+                    <option value="validated" {% if status == "validated" %}selected{% endif %}>Validated</option>
+                    <option value="corrected" {% if status == "corrected" %}selected{% endif %}>Corrected</option>
+                    <option value="rejected" {% if status == "rejected" %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+            <div>
+                <label for="source_id">Source ID</label>
+                <input type="number" name="source_id" id="source_id" value="{{ source_id or '' }}" placeholder="Filter by source ID">
+            </div>
+            <div>
+                <button type="submit">Apply Filters</button>
+            </div>
         </div>
-        <div>
-            <label for="source_id">Source ID</label>
-            <input type="number" name="source_id" id="source_id" value="{{ source_id or '' }}" placeholder="Filter by source">
-        </div>
-        <div>
-            <label>&nbsp;</label>
-            <button type="submit">Filter</button>
-        </div>
-    </div>
-</form>
+    </form>
+</article>
 
 {% if changes %}
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Detected At</th>
-            <th>Source</th>
-            <th>Status</th>
-            <th>Category</th>
-            <th>Summary</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for change in changes %}
-        <tr>
-            <td>{{ change.id }}</td>
-            <td>{{ change.detected_at.strftime('%Y-%m-%d %H:%M') }}</td>
-            <td>{{ change.source_name }}</td>
-            <td>
-                <span class="status-badge status-{{ change.status }}">
-                    {{ change.status.replace('_', ' ').title() }}
-                </span>
-            </td>
-            <td>{{ change.category_name or '-' }}</td>
-            <td class="summary-preview">
-                {% if change.ai_summary %}
-                    {% set max_length = 100 %}
-                    {% if change.ai_summary|length > max_length %}
-                        {{ change.ai_summary[:max_length] }}...
-                    {% else %}
+<article style="padding: 0; overflow: hidden;">
+    <div style="padding: 1.25rem 1.5rem 0 1.5rem;">
+        <h2 style="margin: 0 0 0.75rem 0; font-size: 1.125rem;">Changes ({{ changes|length }})</h2>
+    </div>
+    <table style="margin: 0; border-radius: 0;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Detected At</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Category</th>
+                <th>Summary</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for change in changes %}
+            <tr>
+                <td><strong>#{{ change.id }}</strong></td>
+                <td>{{ change.detected_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td><strong style="font-weight: 700;">{{ change.source_name }}</strong></td>
+                <td>
+                    <span class="status-badge status-{{ change.status }}">
+                        {{ change.status.replace('_', ' ').title() }}
+                    </span>
+                </td>
+                <td>{{ change.category_name or '<span style="color: var(--text-muted);">-</span>'|safe }}</td>
+                <td class="summary-preview">
+                    {% if change.ai_summary %}
                         {{ change.ai_summary }}
+                    {% else %}
+                        <span style="color: var(--text-muted);">-</span>
                     {% endif %}
-                {% else %}
-                    -
-                {% endif %}
-            </td>
-            <td><a href="/ui/changes/{{ change.id }}" role="button" class="secondary">View</a></td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                </td>
+                <td><a href="/ui/changes/{{ change.id }}" role="button" class="secondary">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</article>
 {% else %}
 <article>
-    <p>No changes found. {% if status or source_id %}Try adjusting your filters.{% else %}Run the scraper and change detection to see changes here.{% endif %}</p>
+    <p style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+        No changes found. {% if status or source_id %}Try adjusting your filters.{% else %}Run the scraper and change detection to see changes here.{% endif %}
+    </p>
 </article>
 {% endif %}
 {% endblock %}

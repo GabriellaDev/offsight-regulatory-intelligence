@@ -5,11 +5,12 @@
 {% block content %}
 <h1>Change #{{ change.id }}</h1>
 
-<!-- Info Box -->
-<div class="info-box">
-    <strong>What you are seeing:</strong> This page compares two stored versions of a monitored source. 
-    The AI suggestion is generated from the diff (not the full page). 
-    Human validation creates an audit record and updates status.
+<!-- Explanation Banner -->
+<div class="explanation-box" style="background: rgba(59, 130, 246, 0.15); border-left-width: 4px;">
+    <strong>What you are seeing:</strong>
+    This page compares two stored versions of a monitored regulation. 
+    The AI suggestion is generated only from the detected text difference, not the full document. 
+    A human reviewer must validate or correct the result.
 </div>
 
 {% if error_message %}
@@ -23,18 +24,36 @@
 <!-- Metadata Section -->
 <article>
     <h2>Metadata</h2>
-    <div class="grid">
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 2rem;">
         <div>
-            <strong>Source:</strong> {{ source_name }}<br>
-            <strong>Detected At:</strong> {{ change.detected_at.strftime('%Y-%m-%d %H:%M:%S') }}<br>
-            <strong>Status:</strong> 
-            <span class="status-badge status-{{ change.status }}">
-                {{ change.status.replace('_', ' ').title() }}
-            </span>
+            <p style="margin-bottom: 0.75rem;">
+                <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.25rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Source</strong>
+                {% if source_url %}
+                    <a href="{{ source_url }}" target="_blank" class="url-link" rel="noopener noreferrer" style="font-size: 0.9375rem; font-weight: 600;">{{ source_name }}</a>
+                {% else %}
+                    <span style="font-size: 0.9375rem; font-weight: 600;">{{ source_name }}</span>
+                {% endif %}
+            </p>
+            <p style="margin-bottom: 0.75rem;">
+                <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.25rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Detected At</strong>
+                <span>{{ change.detected_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+            </p>
+            <p style="margin-bottom: 0;">
+                <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.25rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Status</strong>
+                <span class="status-badge status-{{ change.status }}">
+                    {{ change.status.replace('_', ' ').title() }}
+                </span>
+            </p>
         </div>
         <div>
-            <strong>Previous Version:</strong> {{ previous_version or '-' }}<br>
-            <strong>New Version:</strong> {{ new_version or '-' }}
+            <p style="margin-bottom: 0.75rem;">
+                <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.25rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Previous Version</strong>
+                <span style="font-family: monospace; color: var(--text-primary);">{{ previous_version or '-' }}</span>
+            </p>
+            <p style="margin-bottom: 0;">
+                <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.25rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">New Version</strong>
+                <span style="font-family: monospace; color: var(--text-primary);">{{ new_version or '-' }}</span>
+            </p>
         </div>
     </div>
 </article>
@@ -42,54 +61,101 @@
 <!-- AI Suggestion Section -->
 {% if change.ai_summary or category_name %}
 <article>
-    <h2>AI Suggestion</h2>
-    <p><strong>Category:</strong> {{ category_name or '-' }}</p>
-    <p><strong>Summary:</strong></p>
-    <p>{{ change.ai_summary or 'No AI summary available.' }}</p>
+    <h2>AI-Generated Suggestion</h2>
+    <p style="color: var(--text-muted); font-size: 0.8125rem; margin-bottom: 1.25rem; font-style: italic;">
+        Generated locally using Ollama based on detected text changes.
+    </p>
+    
+    {% if category_name %}
+    <p style="margin-bottom: 1rem;">
+        <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Category</strong>
+        <span class="status-badge" style="background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);">
+            {{ category_name }}
+        </span>
+    </p>
+    {% endif %}
+    
+    {% if change.ai_summary %}
+    <div>
+        <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Summary</strong>
+        <p style="color: var(--text-primary); line-height: 1.6; font-size: 0.875rem; margin: 0;">
+            {{ change.ai_summary }}
+        </p>
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted);">No AI summary available.</p>
+    {% endif %}
 </article>
 {% endif %}
 
-<!-- Diff Content Section -->
+<!-- Change Diff Section -->
 <article>
     <h2>Change Diff</h2>
-    <p><small>Diff format: unified diff (--- previous, +++ new)</small></p>
+    <p style="color: var(--text-muted); font-size: 0.8125rem; margin-bottom: 1.25rem;">
+        Unified diff between previous and new versions. Lines marked with <span style="color: #f87171;">-</span> were removed, lines marked with <span style="color: #34d399;">+</span> were added.
+    </p>
     <div class="diff-box">
-        <pre>{{ change.diff_content }}</pre>
+        <pre id="diff-content">{{ change.diff_content }}</pre>
     </div>
 </article>
 
 <!-- Validation Form -->
 {% if change.status in ['pending', 'ai_suggested'] %}
+<hr class="divider">
+
 <article>
-    <h2>Validate Change</h2>
+    <h2>Human Validation (Required)</h2>
+    <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.5rem;">
+        Review the AI suggestion above and provide your validation decision.
+    </p>
     <form method="post" action="/ui/changes/{{ change.id }}/validate">
-        <label for="decision">Decision *</label>
-        <select name="decision" id="decision" required>
-            <option value="">Select decision...</option>
-            <option value="approved">Approve (accept AI suggestion)</option>
-            <option value="corrected">Correct (edit AI suggestion)</option>
-            <option value="rejected">Reject (AI suggestion is wrong)</option>
-        </select>
+        <div style="margin-bottom: 1.5rem;">
+            <label for="decision">Decision *</label>
+            <select name="decision" id="decision" required>
+                <option value="">Select decision...</option>
+                <option value="approved">Approve (accept AI suggestion)</option>
+                <option value="corrected">Correct (edit AI suggestion)</option>
+                <option value="rejected">Reject (AI suggestion is wrong)</option>
+            </select>
+            <small style="display: block; margin-top: 0.5rem; color: var(--text-muted);">
+                Choose how to handle this AI-generated suggestion.
+            </small>
+        </div>
 
-        <label for="final_summary">Final Summary</label>
-        <textarea name="final_summary" id="final_summary" rows="4" placeholder="Required if correcting or rejecting">{{ change.ai_summary or '' }}</textarea>
-        <small>Required when decision is "corrected" or "rejected"</small>
+        <div style="margin-bottom: 1.5rem;">
+            <label for="final_summary">Final Summary</label>
+            <textarea name="final_summary" id="final_summary" rows="4" placeholder="Required if correcting or rejecting">{{ change.ai_summary or '' }}</textarea>
+            <small style="display: block; margin-top: 0.5rem; color: var(--text-muted);">
+                Required when decision is "corrected" or "rejected". Edit the AI summary or provide your own.
+            </small>
+        </div>
 
-        <label for="final_category">Final Category</label>
-        <input type="text" name="final_category" id="final_category" list="categories" placeholder="e.g., Safety and Health" value="{{ category_name or '' }}">
-        <datalist id="categories">
-            <option value="Grid Connection">
-            <option value="Safety and Health">
-            <option value="Environment">
-            <option value="Certification/Documentation">
-            <option value="Other">
-        </datalist>
-        <small>Required when decision is "corrected"</small>
+        <div style="margin-bottom: 1.5rem;">
+            <label for="final_category">Final Category</label>
+            <input type="text" name="final_category" id="final_category" list="categories" placeholder="e.g., Safety and Health" value="{{ category_name or '' }}">
+            <datalist id="categories">
+                <option value="Grid Connection">
+                <option value="Safety and Health">
+                <option value="Environment">
+                <option value="Certification/Documentation">
+                <option value="Other">
+            </datalist>
+            <small style="display: block; margin-top: 0.5rem; color: var(--text-muted);">
+                Required when decision is "corrected". Select or type the impact category.
+            </small>
+        </div>
 
-        <label for="notes">Notes</label>
-        <textarea name="notes" id="notes" rows="3" placeholder="Optional notes about your validation decision"></textarea>
+        <div style="margin-bottom: 2rem;">
+            <label for="notes">Notes</label>
+            <textarea name="notes" id="notes" rows="3" placeholder="Optional notes about your validation decision"></textarea>
+            <small style="display: block; margin-top: 0.5rem; color: var(--text-muted);">
+                Optional: Add any additional context or reasoning for your decision.
+            </small>
+        </div>
 
-        <button type="submit">Submit Validation</button>
+        <button type="submit" style="padding: 0.75rem 1.5rem; font-size: 0.9375rem; width: 100%; max-width: 400px;">
+            Submit Validation
+        </button>
     </form>
 </article>
 {% endif %}
@@ -123,6 +189,36 @@
 </article>
 {% endif %}
 
-<p><a href="/ui/changes">← Back to Changes List</a></p>
-{% endblock %}
+<p style="margin-top: 2rem;"><a href="/ui/changes" class="url-link">← Back to Changes List</a></p>
 
+<script>
+// Color-code diff lines
+(function() {
+    const pre = document.getElementById('diff-content');
+    if (!pre) return;
+    
+    const lines = pre.textContent.split('\n');
+    let html = '';
+    
+    lines.forEach(line => {
+        if (line.startsWith('---') || line.startsWith('+++') || line.startsWith('@@')) {
+            html += '<span class="diff-context">' + escapeHtml(line) + '</span>\n';
+        } else if (line.startsWith('-') && !line.startsWith('---')) {
+            html += '<span class="diff-removed">' + escapeHtml(line) + '</span>\n';
+        } else if (line.startsWith('+') && !line.startsWith('+++')) {
+            html += '<span class="diff-added">' + escapeHtml(line) + '</span>\n';
+        } else {
+            html += '<span class="diff-context">' + escapeHtml(line) + '</span>\n';
+        }
+    });
+    
+    pre.innerHTML = html;
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+})();
+</script>
+{% endblock %}
