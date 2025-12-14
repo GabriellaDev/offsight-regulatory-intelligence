@@ -13,6 +13,7 @@ Or from the project root:
 from fastapi import FastAPI
 
 from offsight.api import changes, sources, validation
+from offsight.ui.routes import router as ui_router
 
 app = FastAPI(
     title="OffSight™ - Regulatory Intelligence",
@@ -24,6 +25,9 @@ app = FastAPI(
 app.include_router(sources.router, prefix="/sources", tags=["sources"])
 app.include_router(changes.router, prefix="/changes", tags=["changes"])
 app.include_router(validation.router, tags=["validation"])
+
+# Include UI router
+app.include_router(ui_router, prefix="/ui", tags=["ui"])
 
 
 @app.get("/health")

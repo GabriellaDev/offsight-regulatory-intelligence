@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Change #{{ change.id }} - OffSight™{% endblock %}
+
+{% block content %}
+<h1>Change #{{ change.id }}</h1>
+
+{% if error_message %}
+<div class="message-error">{{ error_message }}</div>
+{% endif %}
+
+{% if success_message %}
+<div class="message-success">{{ success_message }}</div>
+{% endif %}
+
+<!-- Metadata Section -->
+<article>
+    <h2>Metadata</h2>
+    <div class="grid">
+        <div>
+            <strong>Source:</strong> {{ source_name }}<br>
+            <strong>Detected At:</strong> {{ change.detected_at.strftime('%Y-%m-%d %H:%M:%S') }}<br>
+            <strong>Status:</strong> 
+            <span class="status-badge status-{{ change.status }}">
+                {{ change.status.replace('_', ' ').title() }}
+            </span>
+        </div>
+        <div>
+            <strong>Previous Version:</strong> {{ previous_version or '-' }}<br>
+            <strong>New Version:</strong> {{ new_version or '-' }}
+        </div>
+    </div>
+</article>
+
+<!-- AI Suggestion Section -->
+{% if change.ai_summary or category_name %}
+<article>
+    <h2>AI Suggestion</h2>
+    <p><strong>Category:</strong> {{ category_name or '-' }}</p>
+    <p><strong>Summary:</strong></p>
+    <p>{{ change.ai_summary or 'No AI summary available.' }}</p>
+</article>
+{% endif %}
+
+<!-- Diff Content Section -->
+<article>
+    <h2>Change Diff</h2>
+    <pre>{{ change.diff_content }}</pre>
+</article>
+
+<!-- Validation Form -->
+{% if change.status in ['pending', 'ai_suggested'] %}
+<article>
+    <h2>Validate Change</h2>
+    <form method="post" action="/ui/changes/{{ change.id }}/validate">
+        <label for="decision">Decision *</label>
+        <select name="decision" id="decision" required>
+            <option value="">Select decision...</option>
+            <option value="approved">Approve (accept AI suggestion)</option>
+            <option value="corrected">Correct (edit AI suggestion)</option>
+            <option value="rejected">Reject (AI suggestion is wrong)</option>
+        </select>
+
+        <label for="final_summary">Final Summary</label>
+        <textarea name="final_summary" id="final_summary" rows="4" placeholder="Required if correcting or rejecting">{{ change.ai_summary or '' }}</textarea>
+        <small>Required when decision is "corrected" or "rejected"</small>
+
+        <label for="final_category">Final Category</label>
+        <input type="text" name="final_category" id="final_category" list="categories" placeholder="e.g., Safety and Health" value="{{ category_name or '' }}">
+        <datalist id="categories">
+            <option value="Grid Connection">
+            <option value="Safety and Health">
+            <option value="Environment">
+            <option value="Certification/Documentation">
+            <option value="Other">
+        </datalist>
+        <small>Required when decision is "corrected"</small>
+
+        <label for="notes">Notes</label>
+        <textarea name="notes" id="notes" rows="3" placeholder="Optional notes about your validation decision"></textarea>
+
+        <button type="submit">Submit Validation</button>
+    </form>
+</article>
+{% endif %}
+
+<!-- Validation History Section -->
+{% if validations %}
+<article>
+    <h2>Validation History</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Decision</th>
+                <th>Validated At</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for validation in validations %}
+            <tr>
+                <td>
+                    <span class="status-badge status-{{ validation.decision }}">
+                        {{ validation.decision.replace('_', ' ').title() }}
+                    </span>
+                </td>
+                <td>{{ validation.validated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ validation.notes or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</article>
+{% endif %}
+
+<p><a href="/ui/changes">← Back to Changes List</a></p>
+{% endblock %}
+
