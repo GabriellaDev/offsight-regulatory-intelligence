@@ -31,6 +31,19 @@ templates_dir = project_root / "src" / "offsight" / "ui" / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
 
+@router.get("/", response_class=HTMLResponse, tags=["ui"])
+def home_ui(request: Request) -> HTMLResponse:
+    """
+    Render the simple home/landing page with a short description of the system.
+    """
+    return templates.TemplateResponse(
+        "home.html",
+        {
+            "request": request,
+        },
+    )
+
+
 @router.get("/changes", response_class=HTMLResponse, tags=["ui"])
 def list_changes_ui(
     request: Request,

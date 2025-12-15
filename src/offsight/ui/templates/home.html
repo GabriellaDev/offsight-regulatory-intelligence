@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}OffSight™ - Regulatory Intelligence{% endblock %}
+
+{% block content %}
+<h1>OffSight™ - Regulatory Intelligence</h1>
+<p><small>Prototype system for monitoring and analysing UK offshore wind regulatory changes.</small></p>
+
+<div class="explanation-box">
+    <strong>What this system does:</strong>
+    OffSight monitors configured regulatory sources, stores versioned documents, detects changes between versions,
+    and uses a local AI model (Ollama) to generate short summaries and impact categories. Human reviewers validate
+    or correct these suggestions to create an auditable decision trail.
+</div>
+
+<article>
+    <h2>End-to-end workflow</h2>
+    <ol>
+        <li>Sources are configured on the <strong>Sources</strong> page.</li>
+        <li>Scraper jobs fetch HTML content and store versioned documents.</li>
+        <li>Change detection compares versions and creates <em>RegulationChange</em> records.</li>
+        <li>AI summarisation runs locally via Ollama to suggest a summary and impact category.</li>
+        <li>Humans review each change on the <strong>Changes</strong> page and record validation decisions.</li>
+    </ol>
+    <p>
+        Use the navigation links above to explore the system:
+        start with <strong>Sources</strong> to see what is monitored, then review detected changes on
+        the <strong>Changes</strong> page.
+    </p>
+</article>
+{% endblock %}
+
+{% extends "base.html" %}
+
+{% block title %}OffSight™ - Regulatory Intelligence{% endblock %}
+
+{% block content %}
+<h1>OffSight™ - Regulatory Intelligence</h1>
+<p><small>Prototype system for monitoring and analysing regulatory changes in UK offshore wind guidance.</small></p>
+
+<div class="explanation-box">
+    <strong>What this system does:</strong>
+    OffSight monitors configured regulatory sources, stores versioned documents, detects changes between versions,
+    and uses a local AI model (Ollama) to summarise the impact of those changes. Human reviewers then validate
+    or correct the AI suggestions so you have an auditable view of what changed and why it matters.
+</div>
+
+<article>
+    <h2>End-to-end workflow</h2>
+    <ol>
+        <li>Sources are scraped and stored as versioned regulatory documents.</li>
+        <li>Change detection compares versions and creates <em>RegulationChange</em> records with diffs.</li>
+        <li>AI generates a short summary and impact category for each change.</li>
+        <li>Humans approve, correct, or reject suggestions, creating a validation trail.</li>
+    </ol>
+    <p>
+        Use the navigation links above to configure <strong>Sources</strong> and review detected
+        <strong>Changes</strong>. This UI is intentionally minimal and optimised for the exam demo.
+    </p>
+</article>
+{% endblock %}
+
+

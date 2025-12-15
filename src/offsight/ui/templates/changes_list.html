@@ -69,12 +69,14 @@
                     </span>
                 </td>
                 <td>{{ change.category_name or '<span style="color: var(--text-muted);">-</span>'|safe }}</td>
-                <td class="summary-preview">
-                    {% if change.ai_summary %}
-                        {{ change.ai_summary }}
-                    {% else %}
-                        <span style="color: var(--text-muted);">-</span>
-                    {% endif %}
+                <td>
+                    <div class="summary-preview">
+                        {% if change.ai_summary %}
+                            {{ change.ai_summary }}
+                        {% else %}
+                            <span style="color: var(--text-muted);">-</span>
+                        {% endif %}
+                    </div>
                 </td>
                 <td><a href="/ui/changes/{{ change.id }}" role="button" class="secondary">View</a></td>
             </tr>
