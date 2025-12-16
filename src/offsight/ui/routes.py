@@ -4,7 +4,9 @@ UI router for server-rendered HTML pages.
 Provides web interface for viewing and validating regulatory changes.
 """
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -29,11 +31,24 @@ templates_dir = project_root / "src" / "offsight" / "ui" / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
 
+@router.get("/", response_class=HTMLResponse, tags=["ui"])
+def home_ui(request: Request) -> HTMLResponse:
+    """
+    Render the simple home/landing page with a short description of the system.
+    """
+    return templates.TemplateResponse(
+        "home.html",
+        {
+            "request": request,
+        },
+    )
+
+
 @router.get("/changes", response_class=HTMLResponse, tags=["ui"])
 def list_changes_ui(
     request: Request,
-    status_filter: str | None = None,
-    source_id: int | None = None,
+    status_filter: str | None = Query(None, alias="status_filter"),
+    source_id: str | None = Query(None, alias="source_id"),
     db: Session = Depends(get_db),
 ):
     """
@@ -42,7 +57,7 @@ def list_changes_ui(
     Args:
         request: FastAPI request object
         status_filter: Optional status filter
-        source_id: Optional source ID filter
+        source_id: Optional source ID filter (as string from form)
         db: Database session
 
     Returns:
@@ -63,11 +78,16 @@ def list_changes_ui(
         .outerjoin(Category, RegulationChange.category_id == Category.id)
     )
 
-    # Apply filters
-    if status_filter:
-        query = query.filter(RegulationChange.status == status_filter)
-    if source_id:
-        query = query.filter(Source.id == source_id)
+    # Apply filters - handle empty strings
+    if status_filter and status_filter.strip():
+        query = query.filter(RegulationChange.status == status_filter.strip())
+    
+    if source_id and source_id.strip():
+        try:
+            source_id_int = int(source_id.strip())
+            query = query.filter(Source.id == source_id_int)
+        except (ValueError, TypeError):
+            pass  # Invalid source_id, ignore filter
 
     # Apply ordering
     query = query.order_by(RegulationChange.detected_at.desc())
@@ -89,13 +109,21 @@ def list_changes_ui(
             }
         )
 
+    # Convert source_id back to int for template if valid
+    source_id_display = None
+    if source_id and source_id.strip():
+        try:
+            source_id_display = int(source_id.strip())
+        except (ValueError, TypeError):
+            pass
+
     return templates.TemplateResponse(
         "changes_list.html",
         {
             "request": request,
             "changes": changes,
-            "status": status_filter,
-            "source_id": source_id,
+            "status": status_filter if status_filter and status_filter.strip() else None,
+            "source_id": source_id_display,
         },
     )
 
@@ -132,7 +160,7 @@ def change_detail_ui(
     if not change:
         raise HTTPException(status_code=404, detail=f"Change with id {change_id} not found")
 
-    # Get source name
+    # Get source name and URL
     prev_doc = (
         db.query(RegulationDocument)
         .filter(RegulationDocument.id == change.previous_document_id)
@@ -140,10 +168,12 @@ def change_detail_ui(
     )
 
     source_name = "Unknown"
+    source_url = None
     if prev_doc:
         source = db.query(Source).filter(Source.id == prev_doc.source_id).first()
         if source:
             source_name = source.name
+            source_url = source.url
 
     # Get document versions
     new_doc = (
@@ -177,6 +207,7 @@ def change_detail_ui(
             "request": request,
             "change": change,
             "source_name": source_name,
+            "source_url": source_url,
             "previous_version": prev_doc.version if prev_doc else None,
             "new_version": new_doc.version if new_doc else None,
             "category_name": category_name,
@@ -222,12 +253,27 @@ def validate_change_ui(
 
     # Check if diff_content is available
     if not change.diff_content or len(change.diff_content.strip()) == 0:
+        # Get source info for error page
+        prev_doc = (
+            db.query(RegulationDocument)
+            .filter(RegulationDocument.id == change.previous_document_id)
+            .first()
+        )
+        source_name = "Unknown"
+        source_url = None
+        if prev_doc:
+            source = db.query(Source).filter(Source.id == prev_doc.source_id).first()
+            if source:
+                source_name = source.name
+                source_url = source.url
+
         return templates.TemplateResponse(
             "change_detail.html",
             {
                 "request": request,
                 "change": change,
-                "source_name": "Unknown",
+                "source_name": source_name,
+                "source_url": source_url,
                 "error_message": "No diff_content available for this change.",
             },
             status_code=400,
@@ -261,10 +307,12 @@ def validate_change_ui(
             .first()
         )
         source_name = "Unknown"
+        source_url = None
         if prev_doc:
             source = db.query(Source).filter(Source.id == prev_doc.source_id).first()
             if source:
                 source_name = source.name
+                source_url = source.url
 
         category_name = change.category.name if change.category else None
 
@@ -274,11 +322,137 @@ def validate_change_ui(
                 "request": request,
                 "change": change,
                 "source_name": source_name,
+                "source_url": source_url,
                 "category_name": category_name,
                 "error_message": str(e),
             },
             status_code=400,
         )
 
+
+@router.get("/sources", response_class=HTMLResponse, tags=["ui"])
+def list_sources_ui(
+    request: Request,
+    success: str | None = None,
+    error: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Render the sources management page.
+
+    Args:
+        request: FastAPI request object
+        success: Optional success message from query param
+        error: Optional error message from query param
+        db: Database session
+
+    Returns:
+        Rendered HTML page
+    """
+    # Get all sources
+    sources = db.query(Source).order_by(Source.created_at.desc()).all()
+
+    return templates.TemplateResponse(
+        "sources_list.html",
+        {
+            "request": request,
+            "sources": sources,
+            "success_message": success,
+            "error_message": error,
+        },
+    )
+
+
+@router.post("/sources", tags=["ui"])
+def create_source_ui(
+    request: Request,
+    name: str = Form(...),
+    url: str = Form(...),
+    description: str | None = Form(None),
+    enabled: bool = Form(False),
+    db: Session = Depends(get_db),
+):
+    """
+    Handle source creation form submission.
+
+    Args:
+        request: FastAPI request object
+        name: Source name (required)
+        url: Source URL (required)
+        description: Optional description
+        enabled: Whether source is enabled
+        db: Database session
+
+    Returns:
+        Redirect to sources list with success/error message
+    """
+    # Validate URL
+    if not url.startswith(("http://", "https://")):
+        return RedirectResponse(
+            url=f"/ui/sources?error=URL must start with http:// or https://",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    # Create source
+    try:
+        source = Source(
+            name=name.strip(),
+            url=url.strip(),
+            description=description.strip() if description else None,
+            enabled=enabled,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        db.add(source)
+        db.commit()
+        db.refresh(source)
+
+        return RedirectResponse(
+            url=f"/ui/sources?success=Source '{name}' created successfully",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    except Exception as e:
+        db.rollback()
+        return RedirectResponse(
+            url=f"/ui/sources?error=Failed to create source: {str(e)}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+
+@router.post("/sources/{source_id}/toggle", tags=["ui"])
+def toggle_source_ui(
+    request: Request,
+    source_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Toggle source enabled/disabled status.
+
+    Args:
+        request: FastAPI request object
+        source_id: The ID of the source to toggle
+        db: Database session
+
+    Returns:
+        Redirect to sources list with success message
+
+    Raises:
+        HTTPException: 404 if source not found
+    """
+    source = db.query(Source).filter(Source.id == source_id).first()
+
+    if not source:
+        raise HTTPException(status_code=404, detail=f"Source with id {source_id} not found")
+
+    # Toggle enabled status
+    source.enabled = not source.enabled
+    source.updated_at = datetime.now(UTC)
+    db.commit()
+
+    status_text = "enabled" if source.enabled else "disabled"
+    return RedirectResponse(
+        url=f"/ui/sources?success=Source '{source.name}' {status_text}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 

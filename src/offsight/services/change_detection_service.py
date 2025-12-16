@@ -6,7 +6,7 @@ and creates RegulationChange entries with textual diffs.
 """
 
 import difflib
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -117,12 +117,16 @@ class ChangeDetectionService:
 
             diff_content = "".join(diff_lines)
 
+            # Skip if diff is empty or only whitespace (no real change)
+            if not diff_content or diff_content.strip() == "":
+                continue
+
             # Create new RegulationChange
             new_change = RegulationChange(
                 previous_document_id=previous_doc.id,
                 new_document_id=current_doc.id,
                 diff_content=diff_content,
-                detected_at=datetime.utcnow(),
+                detected_at=datetime.now(UTC),
                 status="pending",
             )
 

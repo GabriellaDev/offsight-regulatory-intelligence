@@ -32,3 +32,20 @@ _This document will record key architectural decisions for OffSight along with t
 - Future work could swap Ollama for another local LLM provider (e.g., LM Studio, vLLM) without changing the high-level architecture, as the AiService abstracts the HTTP API interaction.
 - Rationale: local-first approach supports development and testing without external dependencies, reduces costs, and maintains full control over data processing.
 
+## ADR-014 – Fixed Requirement Class Taxonomy
+
+- OffSight uses a predefined, seeded requirement-class ontology based on UK authority mapping instead of free-form AI categories.
+- The fixed taxonomy consists of seven requirement classes:
+  - Spatial constraints
+  - Temporal constraints
+  - Procedural obligations
+  - Technical performance expectations
+  - Operational restrictions
+  - Evidence and reporting requirements
+  - Other / unclear
+- Categories are seeded into the database via `seed_categories.py` and must match exactly (case-sensitive).
+- The AI service is constrained to return exactly one of these category names, with robust normalization for minor variations (case-insensitive matching, handling of "&" vs "and", etc.).
+- If the AI returns a category that cannot be mapped to the taxonomy, it defaults to "Other / unclear".
+- Rationale: comparability across regulatory changes, auditability of classifications, and reduced category drift over time. This ensures consistent classification that aligns with UK regulatory authority frameworks.
+- Consequences: AI must be explicitly instructed to return one of the allowed category names; unknown or unmappable categories are automatically assigned to "Other / unclear"; the taxonomy can be extended by seeding additional categories, but existing categories should remain stable for historical consistency.
+

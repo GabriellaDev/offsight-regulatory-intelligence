@@ -28,23 +28,16 @@ class AiService:
     into predefined impact categories.
     """
 
-    # Valid impact categories that map to Category names in the database
-    VALID_CATEGORIES = [
-        "grid_connection",
-        "safety_and_health",
-        "environment",
-        "certification_documentation",
-        "other",
+    # Fixed requirement class taxonomy (must match seeded Category names exactly)
+    REQUIREMENT_CLASSES = [
+        "Spatial constraints",
+        "Temporal constraints",
+        "Procedural obligations",
+        "Technical performance expectations",
+        "Operational restrictions",
+        "Evidence and reporting requirements",
+        "Other / unclear",
     ]
-
-    # Mapping from normalized category names to display names
-    CATEGORY_NAME_MAP = {
-        "grid_connection": "Grid Connection",
-        "safety_and_health": "Safety and Health",
-        "environment": "Environment",
-        "certification_documentation": "Certification/Documentation",
-        "other": "Other",
-    }
 
     def __init__(self, base_url: str, model: str, timeout: int = 120):
         """
@@ -90,8 +83,8 @@ class AiService:
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             raise AiServiceError(f"Failed to parse AI response: {e}") from e
 
-        # Validate and normalize category
-        result["impact_category"] = self._normalize_category(result.get("impact_category", "other"))
+        # Validate and normalize requirement class
+        result["requirement_class"] = self._normalize_category(result.get("requirement_class", "Other / unclear"))
 
         return result
 
@@ -105,6 +98,7 @@ class AiService:
         Returns:
             Complete prompt string
         """
+        categories_list = ", ".join([f'"{cat}"' for cat in self.REQUIREMENT_CLASSES])
         prompt = f"""You are analyzing regulatory changes in UK offshore wind regulations.
 
 Below is a text diff showing changes between two versions of a regulatory document:
@@ -114,13 +108,16 @@ Below is a text diff showing changes between two versions of a regulatory docume
 Analyze this change and respond ONLY with a JSON object in this exact format:
 {{
   "summary": "A brief 1-2 sentence summary of what changed and its significance",
-  "impact_category": "one of: grid_connection, safety_and_health, environment, certification_documentation, other",
+  "requirement_class": "EXACTLY one of the following category names",
   "confidence": 0.85
 }}
 
+REQUIREMENT CLASS OPTIONS (you MUST return EXACTLY one of these, with exact spelling and capitalization):
+{categories_list}
+
 Rules:
 - summary: Keep it concise (max 200 words), focus on what changed and why it matters
-- impact_category: Must be exactly one of: grid_connection, safety_and_health, environment, certification_documentation, other
+- requirement_class: MUST be EXACTLY one of the category names listed above, with exact spelling and capitalization
 - confidence: A number between 0.0 and 1.0 indicating your confidence in the classification
 
 Respond ONLY with the JSON object, no additional text or explanation."""
@@ -191,8 +188,9 @@ Respond ONLY with the JSON object, no additional text or explanation."""
         # Validate required keys
         if "summary" not in data:
             raise KeyError("Missing 'summary' in AI response")
-        if "impact_category" not in data:
-            raise KeyError("Missing 'impact_category' in AI response")
+        # Accept either 'requirement_class' or legacy 'impact_category'
+        if "requirement_class" not in data and "impact_category" not in data:
+            raise KeyError("Missing 'requirement_class' or 'impact_category' in AI response")
 
         # Ensure confidence is a float or None
         confidence = data.get("confidence")
@@ -206,67 +204,84 @@ Respond ONLY with the JSON object, no additional text or explanation."""
 
         return {
             "summary": str(data["summary"]).strip(),
-            "impact_category": str(data["impact_category"]).strip().lower(),
+            "requirement_class": str(data.get("requirement_class", data.get("impact_category", ""))).strip(),
             "confidence": confidence,
         }
 
     def _normalize_category(self, category: str) -> str:
         """
-        Normalize and validate the impact category.
+        Normalize and validate the requirement class category.
 
         Args:
             category: Category string from AI response
 
         Returns:
-            Normalized category name (one of VALID_CATEGORIES)
+            Exact category name matching one of REQUIREMENT_CLASSES, or "Other / unclear" if no match
         """
-        normalized = category.lower().strip()
+        # Trim whitespace
+        normalized = category.strip()
 
-        # Map common variations
+        # Case-insensitive exact match first
+        for valid_class in self.REQUIREMENT_CLASSES:
+            if normalized.lower() == valid_class.lower():
+                return valid_class
+
+        # Handle common variations and mappings
+        normalized_lower = normalized.lower()
+        
+        # Map variations to exact category names
         category_mappings = {
-            "grid": "grid_connection",
-            "grid connection": "grid_connection",
-            "safety": "safety_and_health",
-            "safety and health": "safety_and_health",
-            "health": "safety_and_health",
-            "env": "environment",
-            "certification": "certification_documentation",
-            "documentation": "certification_documentation",
-            "cert": "certification_documentation",
+            "spatial": "Spatial constraints",
+            "spatial constraint": "Spatial constraints",
+            "temporal": "Temporal constraints",
+            "temporal constraint": "Temporal constraints",
+            "procedural": "Procedural obligations",
+            "procedural obligation": "Procedural obligations",
+            "procedure": "Procedural obligations",
+            "technical": "Technical performance expectations",
+            "technical performance": "Technical performance expectations",
+            "performance": "Technical performance expectations",
+            "operational": "Operational restrictions",
+            "operational restriction": "Operational restrictions",
+            "restriction": "Operational restrictions",
+            "evidence": "Evidence and reporting requirements",
+            "reporting": "Evidence and reporting requirements",
+            "evidence & reporting": "Evidence and reporting requirements",
+            "evidence and reporting": "Evidence and reporting requirements",
+            "evidence and reporting requirement": "Evidence and reporting requirements",
+            "other": "Other / unclear",
+            "unclear": "Other / unclear",
+            "unknown": "Other / unclear",
         }
 
-        # Check mappings first
-        if normalized in category_mappings:
-            normalized = category_mappings[normalized]
+        if normalized_lower in category_mappings:
+            return category_mappings[normalized_lower]
 
-        # Validate against allowed categories
-        if normalized not in self.VALID_CATEGORIES:
-            return "other"
-
-        return normalized
+        # If no match found, default to "Other / unclear"
+        return "Other / unclear"
 
     def _get_or_create_category(self, category_name: str, db: Session) -> Category:
         """
-        Get or create a Category by name.
+        Get a Category by exact name (categories should be pre-seeded).
 
         Args:
-            category_name: Normalized category name (e.g., "grid_connection")
+            category_name: Exact requirement class name (e.g., "Spatial constraints")
             db: Database session
 
         Returns:
             Category instance
-        """
-        # Map to display name
-        display_name = self.CATEGORY_NAME_MAP.get(category_name, "Other")
 
-        # Try to find existing category
-        category = db.query(Category).filter(Category.name == display_name).first()
+        Raises:
+            ValueError: If category not found (should not happen if seeding is correct)
+        """
+        # Try to find existing category by exact name
+        category = db.query(Category).filter(Category.name == category_name).first()
 
         if not category:
-            # Create new category
+            # Category should exist from seeding, but create fallback if missing
             category = Category(
-                name=display_name,
-                description=f"Regulatory changes related to {display_name.lower()}",
+                name=category_name,
+                description=f"Regulatory changes classified as {category_name.lower()}",
             )
             db.add(category)
             db.flush()  # Flush to get the ID without committing
@@ -302,7 +317,7 @@ Respond ONLY with the JSON object, no additional text or explanation."""
         change.ai_summary = result["summary"]
 
         # Get or create the category
-        category = self._get_or_create_category(result["impact_category"], db)
+        category = self._get_or_create_category(result["requirement_class"], db)
         change.category_id = category.id
 
         # Update status

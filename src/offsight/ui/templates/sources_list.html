@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Sources - OffSight™{% endblock %}
+
+{% block content %}
+<h1>Manage Sources</h1>
+<p><small>Configure regulatory sources to monitor for changes.</small></p>
+
+{% if error_message %}
+<div class="message-error">{{ error_message }}</div>
+{% endif %}
+
+{% if success_message %}
+<div class="message-success">{{ success_message }}</div>
+{% endif %}
+
+<!-- Add Source Form -->
+<article>
+    <h2>Add New Source</h2>
+    <form method="post" action="/ui/sources">
+        <div class="grid">
+            <div>
+                <label for="name">Name *</label>
+                <input type="text" name="name" id="name" required placeholder="e.g., HSE Offshore Safety Regulations">
+            </div>
+            <div>
+                <label for="url">URL *</label>
+                <input type="url" name="url" id="url" required placeholder="https://example.com/regulation">
+            </div>
+        </div>
+        <label for="description">Description</label>
+        <textarea name="description" id="description" rows="2" placeholder="Optional description of this source"></textarea>
+        
+        <label>
+            <input type="checkbox" name="enabled" id="enabled" checked>
+            Enabled (source will be monitored)
+        </label>
+        <span class="checkbox-help">
+            ✓ Checked: The scraper will monitor this source for changes<br>
+            ✗ Unchecked: The source will be created but not monitored
+        </span>
+
+        <button type="submit">Add Source</button>
+    </form>
+</article>
+
+<!-- Sources List -->
+{% if sources %}
+<article style="padding: 0; overflow: hidden;">
+    <div style="padding: 1.5rem 2rem 0 2rem;">
+        <h2 style="margin: 0 0 1rem 0; font-size: 1.25rem;">Configured Sources ({{ sources|length }})</h2>
+    </div>
+    <table style="margin: 0; border-radius: 0;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>URL</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for source in sources %}
+            <tr>
+                <td><strong>#{{ source.id }}</strong></td>
+                <td>
+                    <strong>{{ source.name }}</strong>
+                    {% if source.description %}
+                        <br><small style="color: var(--text-muted); margin-top: 0.25rem; display: block;">{{ source.description }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ source.url }}" target="_blank" class="url-link" rel="noopener noreferrer">
+                        {{ source.url[:60] }}{% if source.url|length > 60 %}...{% endif %}
+                    </a>
+                </td>
+                <td>
+                    {% if source.enabled %}
+                        <span class="status-badge enabled-badge">Enabled</span>
+                    {% else %}
+                        <span class="status-badge disabled-badge">Disabled</span>
+                    {% endif %}
+                </td>
+                <td>{{ source.created_at.strftime('%Y-%m-%d') if source.created_at else '-' }}</td>
+                <td>
+                    <div class="action-buttons">
+                        <form method="post" action="/ui/sources/{{ source.id }}/toggle" style="display: inline;">
+                            <button type="submit" class="secondary" style="margin: 0;">
+                                {% if source.enabled %}Disable{% else %}Enable{% endif %}
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</article>
+{% else %}
+<article>
+    <p style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+        No sources configured. Add a source above to start monitoring regulatory changes.
+    </p>
+</article>
+{% endif %}
+{% endblock %}
+

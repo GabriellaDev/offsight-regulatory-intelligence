@@ -21,37 +21,47 @@ def run_example_scrape() -> None:
     """
     db = SessionLocal()
     try:
-        # Check if any sources exist
-        source = db.query(Source).first()
+        # Prefer demo source if it exists, otherwise fallback to GOV.UK
+        demo_source = db.query(Source).filter(
+            Source.name == "OffSight Demo Regulation (GitHub Pages)"
+        ).first()
 
-        if not source:
-            # Create a default source if none exists
-            print("No sources found. Creating a default source...")
-            source = Source(
-                name="OREI impact on shipping – GOV.UK",
-                url="https://www.gov.uk/guidance/offshore-renewable-energy-installations-impact-on-shipping",
-                description="GOV.UK guidance page used as a scrape-friendly default source",
-                enabled=True,
-            )
-            db.add(source)
-            db.commit()
-            db.refresh(source)
-            print(f"Created source: {source.name} (ID: {source.id})")
+        if demo_source and demo_source.enabled:
+            # Use demo source if available and enabled
+            source = demo_source
+            print(f"Using demo source: {source.name} (ID: {source.id})")
         else:
-            # If the existing first source is the old default, update it to the new GOV.UK source
-            old_default_url = "https://www.legislation.gov.uk/ukpga/2023/52"
-            if source.url == old_default_url:
-                print("Updating existing default source to the new GOV.UK guidance page...")
-                source.name = "OREI impact on shipping – GOV.UK"
-                source.url = (
-                    "https://www.gov.uk/guidance/offshore-renewable-energy-installations-impact-on-shipping"
+            # Fallback to any existing source or create GOV.UK default
+            source = db.query(Source).first()
+
+            if not source:
+                # Create a default source if none exists
+                print("No sources found. Creating a default source...")
+                source = Source(
+                    name="OREI impact on shipping – GOV.UK",
+                    url="https://www.gov.uk/guidance/offshore-renewable-energy-installations-impact-on-shipping",
+                    description="GOV.UK guidance page used as a scrape-friendly default source",
+                    enabled=True,
                 )
-                source.description = (
-                    "GOV.UK guidance page used as a scrape-friendly default source"
-                )
+                db.add(source)
                 db.commit()
                 db.refresh(source)
-                print(f"Updated source: {source.name} (ID: {source.id})")
+                print(f"Created source: {source.name} (ID: {source.id})")
+            else:
+                # If the existing first source is the old default, update it to the new GOV.UK source
+                old_default_url = "https://www.legislation.gov.uk/ukpga/2023/52"
+                if source.url == old_default_url:
+                    print("Updating existing default source to the new GOV.UK guidance page...")
+                    source.name = "OREI impact on shipping – GOV.UK"
+                    source.url = (
+                        "https://www.gov.uk/guidance/offshore-renewable-energy-installations-impact-on-shipping"
+                    )
+                    source.description = (
+                        "GOV.UK guidance page used as a scrape-friendly default source"
+                    )
+                    db.commit()
+                    db.refresh(source)
+                    print(f"Updated source: {source.name} (ID: {source.id})")
 
         print(f"\nScraping source: {source.name} ({source.url})")
 
