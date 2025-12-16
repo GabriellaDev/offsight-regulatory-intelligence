@@ -83,10 +83,10 @@ def test_ai_service_analyses_and_updates_change():
         db.commit()
         db.refresh(change)
 
-        # Mock Ollama API response
+        # Mock Ollama API response (using new requirement_class taxonomy)
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "response": '{"summary": "A new reporting requirement was introduced.", "impact_category": "safety_and_health", "confidence": 0.85}'
+            "response": '{"summary": "A new reporting requirement was introduced.", "requirement_class": "Evidence and reporting requirements", "confidence": 0.85}'
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -108,7 +108,7 @@ def test_ai_service_analyses_and_updates_change():
             # Verify category was created/linked
             category = db.query(Category).filter(Category.id == updated_change.category_id).first()
             assert category is not None
-            assert category.name == "Safety and Health"
+            assert category.name == "Evidence and reporting requirements"
 
     finally:
         db.close()

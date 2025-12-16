@@ -68,7 +68,7 @@
     
     {% if category_name %}
     <p style="margin-bottom: 1rem;">
-        <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Category</strong>
+        <strong style="color: var(--text-secondary); display: block; margin-bottom: 0.5rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Requirement class</strong>
         <span class="status-badge" style="background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);">
             {{ category_name }}
         </span>
@@ -131,17 +131,19 @@
         </div>
 
         <div style="margin-bottom: 1.5rem;">
-            <label for="final_category">Final Category</label>
-            <input type="text" name="final_category" id="final_category" list="categories" placeholder="e.g., Safety and Health" value="{{ category_name or '' }}">
+            <label for="final_category">Final Requirement class</label>
+            <input type="text" name="final_category" id="final_category" list="categories" placeholder="e.g., Spatial constraints" value="{{ category_name or '' }}">
             <datalist id="categories">
-                <option value="Grid Connection">
-                <option value="Safety and Health">
-                <option value="Environment">
-                <option value="Certification/Documentation">
-                <option value="Other">
+                <option value="Spatial constraints">
+                <option value="Temporal constraints">
+                <option value="Procedural obligations">
+                <option value="Technical performance expectations">
+                <option value="Operational restrictions">
+                <option value="Evidence and reporting requirements">
+                <option value="Other / unclear">
             </datalist>
             <small style="display: block; margin-top: 0.5rem; color: var(--text-muted);">
-                Required when decision is "corrected". Select or type the impact category.
+                Required when decision is "corrected". Select or type the requirement class.
             </small>
         </div>
 

@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from offsight.core.config import get_settings
 from offsight.core.db import SessionLocal
 from offsight.core.reset_demo_db import reset_demo_db
+from offsight.core.seed_categories import seed_requirement_categories
 from offsight.core.seed_demo_sources import seed_demo_sources
 from offsight.models.source import Source
 from offsight.services.ai_service import AiService, AiServiceError
@@ -182,9 +183,16 @@ def main() -> None:
         print("=== STEP 1: Reset demo DB ===")
         reset_demo_db(yes=args.yes)
 
-    # Seed demo sources (if requested)
+    # Seed categories and demo sources (if requested)
     if args.seed:
-        print("\n=== STEP 2: Seed demo sources ===")
+        print("\n=== STEP 2: Seed requirement categories ===")
+        db_seed = SessionLocal()
+        try:
+            seed_requirement_categories(db_seed)
+        finally:
+            db_seed.close()
+
+        print("\n=== STEP 3: Seed demo sources ===")
         seed_demo_sources()
 
     # For scrape/detect/ai we need a DB session
@@ -192,15 +200,18 @@ def main() -> None:
         db = SessionLocal()
         try:
             if args.scrape:
-                print("\n=== STEP 3: Scrape enabled sources ===")
+                step_num = "4" if args.seed else "3"
+                print(f"\n=== STEP {step_num}: Scrape enabled sources ===")
                 scrape_enabled_sources(db)
 
             if args.detect:
-                print("\n=== STEP 4: Run change detection ===")
+                step_num = "5" if args.seed else "4"
+                print(f"\n=== STEP {step_num}: Run change detection ===")
                 detect_changes_for_enabled_sources(db)
 
             if args.ai:
-                print("\n=== STEP 5: Run AI analysis ===")
+                step_num = "6" if args.seed else "5"
+                print(f"\n=== STEP {step_num}: Run AI analysis ===")
                 run_ai_for_pending_changes(db, limit=args.ai_limit)
         finally:
             db.close()
