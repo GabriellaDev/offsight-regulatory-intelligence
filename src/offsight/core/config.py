@@ -32,6 +32,13 @@ class Settings(BaseSettings):
         description="Ollama model name to use for AI analysis",
     )
 
+    # Demo configuration
+    demo_source_url: str = Field(
+        default="https://<your-username>.github.io/offsight-demo-regulation/",
+        alias="DEMO_SOURCE_URL",
+        description="GitHub Pages URL used as the primary controlled demo source",
+    )
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
