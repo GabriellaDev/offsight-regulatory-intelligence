@@ -16,21 +16,36 @@ from offsight.models.regulation_document import RegulationDocument
 
 
 class ChangeDetectionService:
-    """Service for detecting changes between document versions."""
+    """
+    Service for detecting changes between document versions.
+    
+    This service compares consecutive versions of RegulationDocument entities
+    from the same source, computes textual diffs using Python's difflib,
+    and creates RegulationChange records when differences are detected.
+    """
 
     def get_ordered_documents(
         self, source_id: int, db: Session
     ) -> list[RegulationDocument]:
         """
-        Return all RegulationDocument entries for the given source,
-        ordered by version (or by retrieved_at if version is not numeric).
-
+        Retrieve all RegulationDocument entries for a source, ordered chronologically.
+        
+        Documents are sorted by numeric version if available, otherwise by
+        retrieved_at timestamp. This ensures proper chronological ordering
+        for change detection.
+        
         Args:
-            source_id: The ID of the Source to get documents for
+            source_id: The ID of the Source to retrieve documents for
             db: SQLAlchemy database session
-
+            
         Returns:
-            List of RegulationDocument entries ordered by version/retrieved_at
+            List of RegulationDocument instances ordered by version/retrieved_at,
+            oldest first. Returns empty list if source has no documents.
+            
+        Example:
+            >>> service = ChangeDetectionService()
+            >>> docs = service.get_ordered_documents(source_id=1, db=session)
+            >>> print(f"Found {len(docs)} document versions")
         """
         documents = (
             db.query(RegulationDocument)
@@ -53,26 +68,34 @@ class ChangeDetectionService:
         self, source_id: int, db: Session
     ) -> list[RegulationChange]:
         """
-        For the given source, detect changes between consecutive document versions.
-
-        - Load ordered documents.
-        - For each pair of consecutive documents (previous, current):
-          - Check if a RegulationChange already exists linking these two documents.
-          - If not, compute a textual diff between previous.content and current.content
-            (using difflib.unified_diff line-by-line).
-          - Create a new RegulationChange with:
-            - previous_document_id
-            - new_document_id
-            - diff_content (string)
-            - detected_at (current UTC timestamp)
-            - status = "pending"
-
+        Detect changes between consecutive document versions for a source.
+        
+        This method performs the following steps:
+        1. Loads all documents for the source in chronological order
+        2. Iterates through consecutive document pairs
+        3. Checks if a RegulationChange already exists for each pair (prevents duplicates)
+        4. Computes a unified diff between document contents using difflib
+        5. Creates a new RegulationChange record if diff is non-empty
+        
+        The method is idempotent - running it multiple times will not create
+        duplicate change records for the same document pairs.
+        
         Args:
             source_id: The ID of the Source to detect changes for
-            db: SQLAlchemy database session
-
+            db: SQLAlchemy database session for queries and commits
+            
         Returns:
-            List of RegulationChange rows created in this run
+            List of newly created RegulationChange instances. Returns empty list
+            if source has fewer than 2 documents, or if all document pairs
+            already have change records, or if all diffs are empty.
+            
+        Note:
+            Empty or whitespace-only diffs are skipped and not stored as changes.
+            
+        Example:
+            >>> service = ChangeDetectionService()
+            >>> changes = service.detect_changes_for_source(source_id=1, db=session)
+            >>> print(f"Detected {len(changes)} new changes")
         """
         documents = self.get_ordered_documents(source_id, db)
 

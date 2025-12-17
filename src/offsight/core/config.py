@@ -11,7 +11,23 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """
+    Application settings loaded from environment variables and .env file.
+    
+    This class uses Pydantic Settings to load configuration from:
+    1. Environment variables (highest priority)
+    2. .env file in project root
+    3. Default values (lowest priority)
+    
+    All settings can be overridden via environment variables using the
+    aliases specified in Field() definitions.
+    
+    Attributes:
+        database_url: PostgreSQL connection string
+        ollama_base_url: Base URL for Ollama API
+        ollama_model: Ollama model name to use
+        demo_source_url: GitHub Pages URL for demo regulation source
+    """
 
     # Database configuration
     database_url: str = Field(

@@ -1,0 +1,617 @@
+{% extends "base.html" %}
+
+{% block title %}Run Monitoring Pipeline - OffSight™{% endblock %}
+
+{% block content %}
+<h1>Run Monitoring Pipeline</h1>
+<p><small>Execute the full monitoring pipeline from the web UI. All steps are idempotent and safe to run multiple times.</small></p>
+
+{% if error %}
+<article class="message-error-card">
+    <strong>❌ Error:</strong> {{ error }}
+</article>
+{% endif %}
+
+{% if pipeline_result %}
+<div class="pipeline-results">
+    {% set new_changes = pipeline_result.totals.get('new_changes', 0) %}
+    {% set ai_processed = pipeline_result.totals.get('changes_ai_processed', 0) %}
+    
+    {% if new_changes > 0 or ai_processed > 0 %}
+    <article class="success-banner">
+        <div class="success-banner-content">
+            <div>
+                <h2 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: var(--success-color);">
+                    🎉 Pipeline Completed Successfully
+                </h2>
+                <p style="margin: 0; color: var(--text-secondary);">
+                    {% if new_changes > 0 %}
+                        <strong>{{ new_changes }}</strong> new change{{ 's' if new_changes != 1 else '' }} detected
+                        {% if ai_processed > 0 %}and <strong>{{ ai_processed }}</strong> change{{ 's' if ai_processed != 1 else '' }} analyzed by AI.{% endif %}
+                    {% else %}
+                        <strong>{{ ai_processed }}</strong> change{{ 's' if ai_processed != 1 else '' }} analyzed by AI.
+                    {% endif %}
+                </p>
+            </div>
+            <a href="/ui/changes" class="cta-button">
+                View Changes →
+            </a>
+        </div>
+    </article>
+    {% endif %}
+    
+    <article class="results-summary-card">
+        <h2 style="margin-top: 0;">Summary</h2>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-value">{{ pipeline_result.totals.get('sources_seeded', 0) }}</div>
+                <div class="summary-label">Sources Seeded</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">{{ pipeline_result.totals.get('sources_scraped', 0) }}</div>
+                <div class="summary-label">Sources Scraped</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">{{ pipeline_result.totals.get('new_documents', 0) }}</div>
+                <div class="summary-label">New Documents</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value highlight">{{ pipeline_result.totals.get('new_changes', 0) }}</div>
+                <div class="summary-label">New Changes</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value highlight">{{ pipeline_result.totals.get('changes_ai_processed', 0) }}</div>
+                <div class="summary-label">AI Processed</div>
+            </div>
+        </div>
+    </article>
+
+    {% if pipeline_result.warnings %}
+    <article class="message-warning-card">
+        <strong>⚠️ Warnings:</strong>
+        <ul style="margin: 0.75rem 0 0 0; padding-left: 1.5rem;">
+            {% for warning in pipeline_result.warnings %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </article>
+    {% endif %}
+
+    <article class="steps-log-card">
+        <h2 style="margin-top: 0;">Step-by-Step Execution</h2>
+        <div class="steps-list">
+            {% for step in pipeline_result.steps %}
+            <div class="step-item status-{{ step.status }}">
+                <span class="step-icon">
+                    {% if step.status == 'success' %}✅
+                    {% elif step.status == 'warning' %}⚠️
+                    {% elif step.status == 'error' %}❌
+                    {% else %}⏭️{% endif %}
+                </span>
+                <div class="step-content">
+                    <strong>{{ step.name }}</strong>
+                    <span class="step-message">{{ step.message }}</span>
+                    {% if step.counts %}
+                    <div class="step-counts">
+                        {% for key, value in step.counts.items() %}
+                        <span class="count-badge">{{ key }}: {{ value }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </article>
+</div>
+{% endif %}
+
+<form method="post" action="/ui/run" class="pipeline-form">
+    <article>
+        <h2 style="margin-top: 0;">Pipeline Configuration</h2>
+        
+        <div class="pipeline-options">
+            <div class="option-group">
+                <h3>Standard Steps</h3>
+                
+                <label class="checkbox-label">
+                    <input type="checkbox" name="seed_sources" value="true" checked>
+                    <div class="checkbox-content">
+                        <strong>Seed demo sources</strong>
+                        <small>Create or update demo sources (GitHub Pages + GOV.UK sources)</small>
+                    </div>
+                </label>
+
+                <label class="checkbox-label">
+                    <input type="checkbox" name="scrape" value="true" checked>
+                    <div class="checkbox-content">
+                        <strong>Scrape enabled sources</strong>
+                        <small>Fetch content from all enabled sources and store new document versions</small>
+                    </div>
+                </label>
+
+                <label class="checkbox-label">
+                    <input type="checkbox" name="detect" value="true" checked>
+                    <div class="checkbox-content">
+                        <strong>Detect changes</strong>
+                        <small>Compare document versions and create RegulationChange records</small>
+                    </div>
+                </label>
+
+                <label class="checkbox-label">
+                    <input type="checkbox" name="run_ai" value="true" checked>
+                    <div class="checkbox-content">
+                        <strong>Run AI analysis</strong>
+                        <small>Analyze pending changes using Ollama</small>
+                    </div>
+                </label>
+
+                <div class="input-group">
+                    <label for="ai_limit">
+                        <strong>AI limit:</strong>
+                    </label>
+                    <input type="number" name="ai_limit" id="ai_limit" value="5" min="1" max="100" class="number-input">
+                    <small>Maximum number of changes to analyze</small>
+                </div>
+
+                <label class="checkbox-label">
+                    <input type="checkbox" name="test_ollama" value="true" checked>
+                    <div class="checkbox-content">
+                        <strong>Test Ollama connectivity</strong>
+                        <small>Check if Ollama is accessible before running AI analysis</small>
+                    </div>
+                </label>
+            </div>
+
+            <details class="advanced-section">
+                <summary>Advanced Options</summary>
+                
+                <div class="option-group" style="margin-top: 1.5rem;">
+                    <h3>Database Operations</h3>
+                    
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="init_db" value="true">
+                        <div class="checkbox-content">
+                            <strong>Init DB (create tables)</strong>
+                            <small>Create database tables if they don't exist. Safe to run multiple times.</small>
+                        </div>
+                    </label>
+
+                    <div class="reset-db-section">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="reset_db" value="true" id="reset_db_checkbox">
+                            <div class="checkbox-content">
+                                <strong>Reset demo DB (DANGEROUS)</strong>
+                                <small>⚠️ This will DELETE all application data. Use only for demo reset.</small>
+                            </div>
+                        </label>
+                        
+                        <label id="confirm_label" class="confirm-input-label" style="display: none;">
+                            <strong>Type "CONFIRM" to enable reset:</strong>
+                            <input type="text" name="reset_confirm_token" id="reset_confirm_token" placeholder="CONFIRM" class="confirm-input">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <h3>Ollama Instructions</h3>
+                    <div class="ollama-instructions">
+                        <p><strong>To use AI analysis, ensure Ollama is running:</strong></p>
+                        <ol>
+                            <li>Start Ollama (it should run automatically after installation)</li>
+                            <li>Pull the required model: <code>ollama pull llama3.1</code></li>
+                            <li>Verify it's running: <code>ollama list</code></li>
+                        </ol>
+                        <p style="margin-bottom: 0;">If Ollama is not accessible, AI analysis will be skipped with a warning.</p>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <button type="submit" class="pipeline-run-button">
+            <span>▶</span> Run Monitoring Pipeline
+        </button>
+    </article>
+</form>
+
+<style>
+    .success-banner {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+        border: 2px solid var(--success-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .success-banner-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .cta-button {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.75rem 1.5rem;
+        background: var(--success-color);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .cta-button:hover {
+        background: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .results-summary-card {
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .summary-item {
+        text-align: center;
+        padding: 1rem;
+        background: var(--bg-darker);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .summary-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .summary-value.highlight {
+        color: var(--primary-color);
+    }
+
+    .summary-label {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .message-error-card,
+    .message-warning-card {
+        margin-bottom: 1.5rem;
+    }
+
+    .message-error-card {
+        background: rgba(239, 68, 68, 0.1);
+        border-left: 4px solid var(--danger-color);
+    }
+
+    .message-warning-card {
+        background: rgba(245, 158, 11, 0.1);
+        border-left: 4px solid var(--warning-color);
+    }
+
+    .steps-log-card {
+        margin-bottom: 1.5rem;
+    }
+
+    .steps-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .step-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid;
+    }
+
+    .step-item.status-success {
+        background: rgba(16, 185, 129, 0.1);
+        border-left-color: var(--success-color);
+    }
+
+    .step-item.status-warning {
+        background: rgba(245, 158, 11, 0.1);
+        border-left-color: var(--warning-color);
+    }
+
+    .step-item.status-error {
+        background: rgba(239, 68, 68, 0.1);
+        border-left-color: var(--danger-color);
+    }
+
+    .step-item.status-skipped {
+        background: rgba(148, 163, 184, 0.1);
+        border-left-color: var(--secondary-color);
+    }
+
+    .step-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .step-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .step-message {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .step-counts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .count-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background: var(--bg-darker);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .pipeline-options {
+        margin-bottom: 1.5rem;
+    }
+
+    .option-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .option-group h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.8125rem;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.875rem;
+        margin-bottom: 0.5rem;
+        background: var(--bg-darker);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .checkbox-label:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--primary-color);
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        margin-top: 0.125rem;
+        cursor: pointer;
+    }
+
+    .checkbox-content {
+        flex: 1;
+    }
+
+    .checkbox-content strong {
+        display: block;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        font-size: 0.9375rem;
+    }
+
+    .checkbox-content small {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.8125rem;
+        line-height: 1.4;
+    }
+
+    .input-group {
+        padding: 0.875rem;
+        background: var(--bg-darker);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group label {
+        display: block;
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .number-input {
+        width: 80px;
+        padding: 0.5rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+    }
+
+    .input-group small {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.8125rem;
+        margin-top: 0.5rem;
+    }
+
+    .advanced-section {
+        margin-top: 1.5rem;
+    }
+
+    .advanced-section summary {
+        cursor: pointer;
+        padding: 0.75rem;
+        background: var(--bg-darker);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        user-select: none;
+    }
+
+    .advanced-section summary:hover {
+        background: var(--bg-card-hover);
+        color: var(--text-primary);
+    }
+
+    .reset-db-section {
+        padding: 1rem;
+        background: rgba(239, 68, 68, 0.1);
+        border-left: 4px solid var(--danger-color);
+        border-radius: 8px;
+        margin-top: 0.5rem;
+    }
+
+    .confirm-input-label {
+        display: block;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .confirm-input-label strong {
+        display: block;
+        color: var(--danger-color);
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .confirm-input {
+        width: 100%;
+        padding: 0.625rem;
+        background: var(--bg-card);
+        border: 2px solid var(--danger-color);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+    }
+
+    .ollama-instructions {
+        background: rgba(59, 130, 246, 0.1);
+        padding: 1.25rem;
+        border-radius: 8px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .ollama-instructions p {
+        margin: 0 0 0.75rem 0;
+        color: var(--text-primary);
+    }
+
+    .ollama-instructions ol {
+        margin: 0.75rem 0;
+        padding-left: 1.5rem;
+        color: var(--text-secondary);
+    }
+
+    .ollama-instructions code {
+        background: var(--bg-card);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.875rem;
+        color: var(--primary-color);
+    }
+
+    .pipeline-run-button {
+        width: 100%;
+        padding: 1rem 1.5rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .pipeline-run-button:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .pipeline-run-button span {
+        font-size: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .success-banner-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+
+<script>
+    // Handle reset DB confirmation
+    document.getElementById('reset_db_checkbox').addEventListener('change', function() {
+        const confirmLabel = document.getElementById('confirm_label');
+        const confirmInput = document.getElementById('reset_confirm_token');
+        
+        if (this.checked) {
+            confirmLabel.style.display = 'block';
+            confirmInput.required = true;
+        } else {
+            confirmLabel.style.display = 'none';
+            confirmInput.required = false;
+            confirmInput.value = '';
+        }
+    });
+
+    // Validate reset confirmation before submit
+    document.querySelector('.pipeline-form').addEventListener('submit', function(e) {
+        const resetCheckbox = document.getElementById('reset_db_checkbox');
+        const confirmInput = document.getElementById('reset_confirm_token');
+        
+        if (resetCheckbox.checked && confirmInput.value !== 'CONFIRM') {
+            e.preventDefault();
+            alert('Please type "CONFIRM" in the confirmation field to enable database reset.');
+            confirmInput.focus();
+        }
+    });
+</script>
+{% endblock %}
+

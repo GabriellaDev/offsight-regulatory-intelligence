@@ -84,21 +84,23 @@ The API Layer provides RESTful endpoints for accessing and managing regulatory c
 ### UI Layer (web frontend or templates)
 
 **Main Responsibility:**
-The UI Layer provides a user interface for viewing regulatory changes, filtering results, and performing validations. It can be implemented as FastAPI templates (Jinja2) or a minimal React frontend.
+The UI Layer provides a user interface for viewing regulatory changes, filtering results, performing validations, managing sources, and executing the monitoring pipeline. It is implemented using FastAPI templates (Jinja2) with a server-rendered approach.
 
 **Main Inputs:**
 - User interactions (clicks, form submissions, filter selections)
 - Data from the API Layer
 
 **Main Outputs:**
-- Rendered HTML pages or React components
-- User interface elements (tables, forms, filters)
+- Rendered HTML pages
+- User interface elements (tables, forms, filters, pipeline execution interface)
 
 **Interactions:**
 - Consumes data from the API Layer via HTTP requests
 - Sends user validation actions back to the API Layer
 - Displays RegulationChange lists with filtering and sorting capabilities
 - Allows users to view, validate, and correct AI-generated summaries and categories
+- Provides a web-based pipeline execution interface (`/ui/run`) that orchestrates all pipeline steps
+- Enables source management (add, update, enable/disable) through a web interface (`/ui/sources`)
 
 ### Database (PostgreSQL)
 
@@ -151,6 +153,8 @@ The main operational flow of OffSight follows these steps:
 5. **Storage**: All entities (Sources, RegulationDocuments, RegulationChanges, Categories) are persisted in PostgreSQL, ensuring traceability and historical tracking.
 
 6. **User Access and Validation**: Users access the UI to view a list of detected changes, filtered by source, date, category, or validation status. Users can review the AI-generated summaries and categories, and create ValidationRecords to approve, correct, or reject the AI's interpretation. These validations are stored in the Database and can be used to improve future AI accuracy or for reporting purposes.
+
+7. **Pipeline Execution**: Users can execute the full monitoring pipeline through the web UI (`/ui/run`), which provides a unified interface for running all pipeline steps (seed sources, scrape, detect changes, AI analysis) without requiring command-line access. The pipeline execution is idempotent and safe to run multiple times.
 
 ## Use in Documentation and Diagrams
 

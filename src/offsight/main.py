@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from offsight.api import changes, sources, validation
+from offsight.api import changes, pipeline, sources, validation
 from offsight.ui.routes import router as ui_router
 
 app = FastAPI(
@@ -29,6 +29,7 @@ app = FastAPI(
 app.include_router(sources.router, prefix="/sources", tags=["sources"])
 app.include_router(changes.router, prefix="/changes", tags=["changes"])
 app.include_router(validation.router, tags=["validation"])
+app.include_router(pipeline.router, prefix="/api/pipeline", tags=["pipeline"])
 
 # Include UI router
 app.include_router(ui_router, prefix="/ui", tags=["ui"])
@@ -41,12 +42,26 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 @app.get("/")
 async def root():
-    """Redirect root to UI home page."""
+    """
+    Root endpoint that redirects to the UI home page.
+    
+    Returns:
+        RedirectResponse to /ui/
+    """
     return RedirectResponse(url="/ui/")
 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """
+    Health check endpoint for monitoring and load balancers.
+    
+    Returns:
+        Dictionary with status "ok" if the application is running
+        
+    Example:
+        >>> GET /health
+        {"status": "ok"}
+    """
     return {"status": "ok"}
 

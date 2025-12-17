@@ -11,10 +11,12 @@ This document defines the functional and non-functional requirements for OffSigh
 | FR3 | Version tracking | Detect when a document from a source has changed and store versioned snapshots. |
 | FR4 | Change detection | Compute differences between the new and previous version of a document when a change is detected. |
 | FR5 | AI summarisation | For each detected change, generate a short human-readable summary using a local LLM. |
-| FR6 | Impact classification | For each detected change, classify its impact into one of a predefined set of categories (grid connection, safety and health, environment, certification/documentation, other). |
+| FR6 | Impact classification | For each detected change, classify its impact into one of a predefined set of requirement classes: Spatial constraints, Temporal constraints, Procedural obligations, Technical performance expectations, Operational restrictions, Evidence and reporting requirements, Other/unclear. |
 | FR7 | Human validation | Allow a user to validate or correct the AI-generated summary and category, and store the validation result. |
 | FR8 | Change overview UI | Present a list of detected changes with source, date, summary, category, and validation status, with basic filtering. |
 | FR9 | Traceability | For each change, store references to the original URL/source, document versions, and detection time. |
+| FR10 | Pipeline execution UI | Provide a web-based interface to execute the full monitoring pipeline (seed, scrape, detect, AI analysis) without requiring command-line access. |
+| FR11 | Source management UI | Allow users to add, update, and enable/disable regulatory sources through a web interface. |
 
 ## Non-Functional Requirements
 

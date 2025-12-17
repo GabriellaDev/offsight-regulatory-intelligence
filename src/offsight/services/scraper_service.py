@@ -19,7 +19,16 @@ from offsight.models.source import Source
 
 
 class ScraperService:
-    """Service for scraping regulatory sources and storing document versions."""
+    """
+    Service for scraping regulatory sources and storing document versions.
+    
+    This service handles HTTP requests to regulatory sources, extracts text content
+    from HTML pages, and stores new document versions in the database when content
+    changes. It uses content hashing to detect changes and prevents duplicate storage.
+    
+    Attributes:
+        timeout: HTTP request timeout in seconds
+    """
 
     def __init__(self, timeout: int = 30):
         """
@@ -32,16 +41,30 @@ class ScraperService:
 
     def fetch_raw_content(self, source: Source) -> str | None:
         """
-        Fetch and extract text content from a source URL.
-
+        Fetch and extract text content from a regulatory source URL.
+        
+        This method performs an HTTP GET request to the source URL, parses the HTML
+        response using BeautifulSoup, and extracts text content from paragraph tags.
+        Falls back to body text if no paragraphs are found.
+        
         Args:
-            source: The Source entity to fetch content from
-
+            source: The Source entity containing the URL to fetch
+            
         Returns:
             Extracted text content as a string, or None if the fetch failed.
-
-        Notes:
-            HTTP/network errors are caught and logged; returns None on failure.
+            Returns None on HTTP errors, network errors, or if the response
+            cannot be parsed.
+            
+        Note:
+            HTTP/network errors are caught and logged; the method returns None
+            on failure rather than raising exceptions to allow graceful handling.
+            
+        Example:
+            >>> scraper = ScraperService()
+            >>> source = Source(url="https://example.com/regulation")
+            >>> content = scraper.fetch_raw_content(source)
+            >>> if content:
+            ...     print(f"Fetched {len(content)} characters")
         """
         # Fetch the HTML content
         try:
@@ -82,19 +105,40 @@ class ScraperService:
     ) -> RegulationDocument | None:
         """
         Fetch content from a source and store a new document version if content changed.
-
+        
+        This method performs the complete scraping workflow:
+        1. Loads the source from the database
+        2. Fetches current content from the source URL
+        3. Computes SHA256 hash of the content
+        4. Compares with the latest stored document's hash
+        5. Stores a new RegulationDocument only if the hash differs
+        6. Increments version numbers appropriately
+        
+        The method is idempotent - calling it multiple times with unchanged content
+        will not create duplicate document versions.
+        
         Args:
-            source_id: The ID of the Source to fetch
-            db: SQLAlchemy database session
-
+            source_id: The ID of the Source to fetch and store
+            db: SQLAlchemy database session for queries and commits
+            
         Returns:
-            New RegulationDocument if content changed, None if unchanged or fetch failed.
-
+            New RegulationDocument instance if content changed and was stored,
+            None if content is unchanged (hash matches) or if fetch failed.
+            
         Raises:
-            ValueError: If source not found
-
-        Notes:
-            HTTP/network errors are handled and logged; returns None on failure.
+            ValueError: If source with the given ID is not found in the database
+            
+        Note:
+            HTTP/network errors are handled gracefully and logged; the method
+            returns None on failure rather than raising exceptions.
+            
+        Example:
+            >>> scraper = ScraperService()
+            >>> new_doc = scraper.fetch_and_store_if_changed(source_id=1, db=session)
+            >>> if new_doc:
+            ...     print(f"Stored new version: {new_doc.version}")
+            ... else:
+            ...     print("No changes detected")
         """
         # Load the source
         source = db.query(Source).filter(Source.id == source_id).first()

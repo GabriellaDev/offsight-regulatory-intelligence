@@ -22,10 +22,20 @@ class AiServiceError(Exception):
 
 class AiService:
     """
-    Service for calling a local Ollama model to analyse regulatory changes.
-
-    Uses the Ollama HTTP API to generate summaries and classify changes
-    into predefined impact categories.
+    Service for analyzing regulatory changes using a local Ollama LLM.
+    
+    This service communicates with the Ollama HTTP API to generate human-readable
+    summaries and classify regulatory changes into predefined requirement classes.
+    It handles prompt construction, API calls, response parsing, and category
+    normalization to ensure consistency with the fixed taxonomy.
+    
+    Attributes:
+        REQUIREMENT_CLASSES: Fixed list of 7 requirement class names that must
+            match seeded Category names exactly. The AI is constrained to return
+            one of these categories.
+        base_url: Base URL for Ollama API (e.g., "http://localhost:11434")
+        model: Ollama model name (e.g., "llama3.1")
+        timeout: HTTP request timeout in seconds
     """
 
     # Fixed requirement class taxonomy (must match seeded Category names exactly)
@@ -41,12 +51,19 @@ class AiService:
 
     def __init__(self, base_url: str, model: str, timeout: int = 120):
         """
-        Initialize the AI service.
+        Initialize the AI service with Ollama configuration.
 
         Args:
             base_url: Base URL for Ollama API (e.g., "http://localhost:11434")
             model: Model name to use (e.g., "llama3.1")
             timeout: HTTP request timeout in seconds (default: 120)
+            
+        Example:
+            >>> ai_service = AiService(
+            ...     base_url="http://localhost:11434",
+            ...     model="llama3.1",
+            ...     timeout=300
+            ... )
         """
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -54,19 +71,32 @@ class AiService:
 
     def analyse_change_text(self, change_text: str) -> dict:
         """
-        Calls Ollama with the given change_text and returns analysis results.
-
+        Analyze change text using Ollama LLM and return structured results.
+        
+        This method sends the change text (typically a unified diff) to Ollama
+        with a carefully constructed prompt that constrains the AI to return
+        one of the predefined requirement classes. The response is parsed,
+        validated, and normalized.
+        
         Args:
-            change_text: The diff content or change text to analyze
-
+            change_text: The diff content or change text to analyze (typically
+                from RegulationChange.diff_content)
+                
         Returns:
             Dictionary with keys:
-                - summary: short natural-language summary of the change
-                - impact_category: one of the valid categories
-                - confidence: float (0.0–1.0) or None
-
+                - "summary": Short natural-language summary of the change (str)
+                - "requirement_class": One of the fixed requirement classes (str)
+                - "confidence": Confidence score between 0.0 and 1.0, or None (float | None)
+                
         Raises:
-            AiServiceError: If the API call fails or response cannot be parsed
+            AiServiceError: If the Ollama API call fails, response cannot be parsed,
+                or required fields are missing from the response
+                
+        Example:
+            >>> ai_service = AiService(base_url="http://localhost:11434", model="llama3.1")
+            >>> result = ai_service.analyse_change_text("+ New safety requirement...")
+            >>> print(f"Category: {result['requirement_class']}")
+            >>> print(f"Summary: {result['summary']}")
         """
         # Build the prompt
         prompt = self._build_prompt(change_text)
@@ -333,20 +363,34 @@ Respond ONLY with the JSON object, no additional text or explanation."""
         self, db: Session, limit: int = 10
     ) -> list[RegulationChange]:
         """
-        Find and analyze pending RegulationChange rows.
-
-        Finds RegulationChange rows with:
-        - status = "pending"
-        - ai_summary is NULL
-
-        Processes up to `limit` of them and returns the list of updated changes.
-
+        Find and analyze pending RegulationChange records.
+        
+        This method queries the database for RegulationChange records that:
+        - Have status = "pending"
+        - Have ai_summary = NULL (not yet analyzed)
+        
+        It processes up to `limit` changes, sending each to Ollama for analysis
+        and updating the database with the AI-generated summary and category.
+        Changes are updated with status = "ai_suggested" after successful analysis.
+        
         Args:
-            db: Database session
-            limit: Maximum number of changes to process (default: 10)
-
+            db: SQLAlchemy database session for queries and updates
+            limit: Maximum number of changes to process in this batch (default: 10)
+            
         Returns:
-            List of updated RegulationChange instances
+            List of RegulationChange instances that were successfully analyzed
+            and updated. Changes that fail analysis are skipped (with warnings)
+            and not included in the returned list.
+            
+        Note:
+            If Ollama is unavailable or analysis fails for a change, that change
+            is skipped and processing continues with the next change. Errors are
+            logged but do not stop the batch processing.
+            
+        Example:
+            >>> ai_service = AiService(base_url="http://localhost:11434", model="llama3.1")
+            >>> updated = ai_service.analyse_pending_changes(db=session, limit=5)
+            >>> print(f"Analyzed {len(updated)} changes")
         """
         # Find pending changes without AI summaries
         pending_changes = (

@@ -17,6 +17,7 @@ from offsight.models.regulation_change import RegulationChange
 from offsight.models.regulation_document import RegulationDocument
 from offsight.models.source import Source
 from offsight.models.validation_record import ValidationRecord
+from offsight.services.pipeline_service import run_pipeline
 from offsight.services.validation_service import process_validation
 
 router = APIRouter()
@@ -454,5 +455,91 @@ def toggle_source_ui(
         url=f"/ui/sources?success=Source '{source.name}' {status_text}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
+
+
+@router.get("/run", response_class=HTMLResponse, tags=["ui"])
+def run_pipeline_ui(
+    request: Request,
+    result: str | None = Query(None),
+    error: str | None = Query(None),
+):
+    """
+    Render the pipeline runner page with optional result or error.
+    """
+    pipeline_result = None
+    if result:
+        try:
+            import json
+            import base64
+            result_json = base64.b64decode(result.encode()).decode()
+            pipeline_result = json.loads(result_json)
+        except Exception:
+            pipeline_result = None
+
+    return templates.TemplateResponse(
+        "run_pipeline.html",
+        {
+            "request": request,
+            "pipeline_result": pipeline_result,
+            "error": error,
+        },
+    )
+
+
+@router.post("/run", tags=["ui"])
+def run_pipeline_ui_post(
+    request: Request,
+    init_db: str | None = Form(None),
+    reset_db: str | None = Form(None),
+    reset_confirm_token: str = Form(""),
+    seed_sources: str | None = Form(None),
+    scrape: str | None = Form(None),
+    detect: str | None = Form(None),
+    run_ai: str | None = Form(None),
+    ai_limit: int = Form(5),
+    test_ollama: str | None = Form(None),
+):
+    """
+    Handle pipeline run form submission (PRG pattern).
+    """
+    try:
+        # Convert checkbox strings to booleans (checkboxes send "true" when checked, nothing when unchecked)
+        init_db_bool = init_db == "true" if init_db else False
+        reset_db_bool = reset_db == "true" if reset_db else False
+        seed_sources_bool = seed_sources == "true" if seed_sources else True  # Default True
+        scrape_bool = scrape == "true" if scrape else True  # Default True
+        detect_bool = detect == "true" if detect else True  # Default True
+        run_ai_bool = run_ai == "true" if run_ai else True  # Default True
+        test_ollama_bool = test_ollama == "true" if test_ollama else True  # Default True
+
+        result = run_pipeline(
+            init_db_flag=init_db_bool,
+            reset_db_flag=reset_db_bool,
+            reset_confirm_token=reset_confirm_token,
+            seed_sources=seed_sources_bool,
+            scrape=scrape_bool,
+            detect=detect_bool,
+            run_ai=run_ai_bool,
+            ai_limit=ai_limit,
+            test_ollama=test_ollama_bool,
+        )
+
+        # Store result in session or pass via query params
+        # For simplicity, we'll encode the result in the redirect URL
+        # In production, you might use session storage
+        import json
+        import base64
+        result_json = json.dumps(result.to_dict())
+        result_encoded = base64.b64encode(result_json.encode()).decode()
+
+        return RedirectResponse(
+            url=f"/ui/run?result={result_encoded}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    except Exception as e:
+        return RedirectResponse(
+            url=f"/ui/run?error={str(e)}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
 
