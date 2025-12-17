@@ -10,7 +10,11 @@ Or from the project root:
     uvicorn src.offsight.main:app --reload
 """
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from offsight.api import changes, sources, validation
 from offsight.ui.routes import router as ui_router
@@ -28,6 +32,17 @@ app.include_router(validation.router, tags=["validation"])
 
 # Include UI router
 app.include_router(ui_router, prefix="/ui", tags=["ui"])
+
+# Mount static files directory
+static_dir = Path(__file__).parent / "ui" / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+
+@app.get("/")
+async def root():
+    """Redirect root to UI home page."""
+    return RedirectResponse(url="/ui/")
 
 
 @app.get("/health")

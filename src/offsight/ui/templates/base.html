@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}OffSight™ - Regulatory Intelligence{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/images/offsight_logo.svg">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
         :root {
@@ -37,7 +38,16 @@
             box-shadow: var(--shadow-md);
             border-bottom: 1px solid var(--border-color);
             margin-bottom: 0;
-            padding: 0.75rem 0;
+            padding: 0.25rem 0;
+        }
+
+        nav ul {
+            margin-bottom: 0;
+            padding: 0;
+        }
+
+        nav li {
+            margin-bottom: 0;
         }
 
         body {
@@ -48,6 +58,21 @@
             color: var(--primary-color);
             font-size: 1.375rem;
             font-weight: 700;
+        }
+
+        .logo {
+            height: 4.5rem;
+            width: auto;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .logo-link {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            padding: 0;
+            margin: 0;
         }
 
         nav a {
@@ -437,12 +462,48 @@
         .url-link:hover {
             color: var(--primary-hover);
         }
+
+        .home-page {
+            position: relative;
+            min-height: 60vh;
+        }
+
+        .home-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 400px;
+            height: 400px;
+            background-image: url('/static/images/wind_turbine.svg');
+            background-repeat: no-repeat;
+            background-position: top right;
+            background-size: contain;
+            opacity: 0.25;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .home-page > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .home-page article,
+        .home-page .explanation-box {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(2px);
+        }
     </style>
 </head>
 <body>
     <nav class="container-fluid">
         <ul>
-            <li><strong>OffSight™</strong></li>
+            <li>
+                <a href="/ui" class="logo-link">
+                    <img src="/static/images/offsight_logo.svg" alt="OffSight™" class="logo">
+                </a>
+            </li>
         </ul>
         <ul>
             <li><a href="/ui">Home</a></li>
