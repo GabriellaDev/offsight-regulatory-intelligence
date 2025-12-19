@@ -8,7 +8,7 @@ list response.
 
 from fastapi.testclient import TestClient
 
-from src.offsight.main import app
+from offsight.main import app
 
 client = TestClient(app)
 
