@@ -104,7 +104,7 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1
 
 # Demo source URL (GitHub Pages)
-DEMO_SOURCE_URL=https://your-username.github.io/offsight-demo-regulation/
+DEMO_SOURCE_URL=https://gabrielladev.github.io/offsight-demo-regulation/
 ```
 
 **Security Note:** Never commit `.env` files to version control. They are already in `.gitignore`.
