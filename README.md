@@ -1,6 +1,6 @@
 # OffSight™ – AI-Powered Regulatory Intelligence for Offshore Wind
 
-OffSight™ is a proof-of-concept system that monitors regulatory changes in the UK offshore wind market and translates them into actionable insights for product design and certification.
+OffSight™ is a proof-of-concept system that monitors regulatory changes in the UK offshore wind market and translates them into actionable insights for product design and certification, for the people responsible for requirement monitoring.
 
 This project is developed as part of a bachelor thesis at VIA University College (Global Business Engineering).
 
@@ -44,7 +44,7 @@ Before running OffSight, ensure you have the following installed and running:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/GabriellaDev/offsight-regulatory-intelligence.git
 cd offsight-regulatory-intelligence
 
 # Create a virtual environment (recommended)
@@ -73,7 +73,7 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1
 
 # Demo source URL (GitHub Pages)
-DEMO_SOURCE_URL=https://your-username.github.io/offsight-demo-regulation/
+DEMO_SOURCE_URL=https://gabrielladev.github.io/offsight-demo-regulation-source/
 ```
 
 **Note**: Replace `username`, `password`, and database name with your PostgreSQL credentials.
@@ -174,7 +174,6 @@ PYTHONPATH=src pytest tests/test_health.py
 - **Setup Guide**: See [docs/setup.md](docs/setup.md) for detailed installation instructions
 - **Architecture**: See [docs/architecture.md](docs/architecture.md) for system design
 - **Requirements**: See [docs/requirements.md](docs/requirements.md) for functional requirements
-- **Domain Model**: See [docs/domain-model.md](docs/domain-model.md) for entity relationships
 - **Code Documentation**: See [docs/code-documentation.md](docs/code-documentation.md) for docstring standards
 
 ## API Documentation
